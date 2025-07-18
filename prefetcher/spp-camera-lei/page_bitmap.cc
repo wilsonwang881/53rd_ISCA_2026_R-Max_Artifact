@@ -384,17 +384,17 @@ void spp::SPP_PAGE_BITMAP::print_page_access() {
         std::cout << "Page " << pair.first << " match, accesses: " << last_round_pg_acc[pair.first].total_access << "/" << this_round_pg_acc[pair.first].total_access << " last/this" << std::endl;
 
         for (size_t i = 0; i < BITMAP_SIZE / 8; i++) 
-          std::cout << std::setw(4) << last_round_pg_acc[pair.first].col_access[i] << "/" << std::setw(4) << this_round_pg_acc[pair.first].col_access[i] << " "; 
+          std::cout << std::setw(4) << std::right << last_round_pg_acc[pair.first].col_access[i] << "/" << std::setw(4) << std::left << this_round_pg_acc[pair.first].col_access[i]; 
 
         std::cout << std::endl;
 
         for (std::size_t i = 0; i < BITMAP_SIZE / 8; i++) {
           for (size_t j = 0; j < BITMAP_SIZE / 8; j++)  {
-            std::cout << std::setw(4) << (last_round_pg_acc[pair.first].block[i * 8 + j] ? "\u25FC" : "\u25FB") << "/";
-            std::cout << std::setw(4) << (pair.second.block[i * 8 + j] ? "\u25FC" : "\u25FB") << "      ";
+            std::cout << "   " << (last_round_pg_acc[pair.first].block[i * 8 + j] ? "\u25FC" : "\u25FB") << "/";
+            std::cout << (pair.second.block[i * 8 + j] ? "\u25FC" : "\u25FB") << "   ";
           }
 
-          std::cout << std::setw(5) << last_round_pg_acc[pair.first].row_access[i] << "/ " << this_round_pg_acc[pair.first].row_access[i] << std::endl; 
+          std::cout << std::setw(4) << std::right << last_round_pg_acc[pair.first].row_access[i] << "/" << this_round_pg_acc[pair.first].row_access[i] << std::endl; 
         }
 
         /*

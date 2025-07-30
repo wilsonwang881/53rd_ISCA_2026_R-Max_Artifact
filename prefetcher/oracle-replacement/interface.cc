@@ -17,7 +17,7 @@ void CACHE::prefetcher_initialize() {
 
   if (pref.oracle.ORACLE_ACTIVE) {
     pref.oracle.init();
-    pref.call_poll(this);
+    //pref.call_poll(this);
   }
 }
 
@@ -40,6 +40,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
         && this->get_mshr_occupancy() == this->get_mshr_size()) 
       return metadata_in; 
   }
+
+  pref.oracle.update_demand(this->current_cycle, base_addr, cache_hit, type);
 
   uint64_t set = this->get_set_index(base_addr);
   bool original_hit = cache_hit;
@@ -386,8 +388,6 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   else 
     assert(cache_hit);
 
-  pref.oracle.update_demand(this->current_cycle, base_addr, useful_prefetch ? 0 : cache_hit, type);
-
   uint64_t way = this->get_way(base_addr, set);
 
   if (not_found_hit) 
@@ -398,7 +398,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
 
     // Last access to the prefetched block used.
     if (remaining_acc == 0) {   
-      pref.call_poll(this);
+      //pref.call_poll(this);
       int updated_remaining_acc = pref.oracle.check_pf_status(base_addr);
 
       if (updated_remaining_acc == -1) {
@@ -513,7 +513,7 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
     champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
   else {
     champsim::operable::lru_states.push_back(std::make_tuple(set, way, 0));
-    pref.call_poll(this);
+    //pref.call_poll(this);
 
     if (pref.debug_print) 
       std::cout << "set " << this->get_set_index(addr) << " addr " << addr << " cleared LRU bits in cache fill" << std::endl; 

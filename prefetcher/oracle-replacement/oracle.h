@@ -41,8 +41,6 @@ namespace spp_l3 {
     std::map<int, int> set_availability;
     uint64_t MSHR_hits = 0;
     uint64_t inflight_write_hits = 0;
-    uint64_t internal_PQ_hits = 0;
-    uint64_t cs_q_hits = 0;
     uint64_t oracle_pf_hits = 0;
     uint64_t unhandled_misses_not_replaced = 0;
     uint64_t unhandled_misses_replaced = 0;
@@ -86,7 +84,6 @@ namespace spp_l3 {
     uint64_t check_set_pf_avail(uint64_t addr);
     int check_pf_status(uint64_t addr);
     int update_pf_avail(uint64_t addr, uint64_t cycle);
-    std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> poll(CACHE* cache);
     uint64_t rollback_prefetch(uint64_t addr);
     uint64_t calc_set(uint64_t addr);
     std::pair<uint64_t, uint64_t> check_addr_timestamp(uint64_t addr);

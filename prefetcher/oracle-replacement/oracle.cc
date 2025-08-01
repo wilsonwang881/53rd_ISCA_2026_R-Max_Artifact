@@ -466,72 +466,6 @@ int spp_l3::SPP_ORACLE::update_pf_avail(uint64_t addr, uint64_t cycle) {
   return res;
 }
 
-std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> spp_l3::SPP_ORACLE::poll(CACHE* cache) {
-  std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> target_v;
-
-  if (oracle_pf_size == 0) 
-    return target_v; 
-
-  for (size_t set = 0; set < SET_NUM; set++) {
-    while (set_availability[set] > 0 && oracle_pf[set].size() > 0) {
-      auto ite = &oracle_pf[set].front();
-      uint64_t way = check_set_pf_avail(ite->addr);
-
-      if (way < WAY_NUM) {
-        std::tuple<uint64_t, uint64_t, bool, bool> target = std::make_tuple(0, 0, 0, 0);
-        std::get<0>(target) = ite->addr;
-        std::get<1>(target) = ite->cycle_demanded;
-        std::get<2>(target) = true;
-        int before_counter = cache_state[set * WAY_NUM + way].pending_accesses;
-
-        if (cache_state[set * WAY_NUM + way].addr != ite->addr) 
-          set_availability[set]--;
-
-        /*
-        if (ite->type == 3) { 
-          std::get<3>(target) = true;
-
-          if (ORACLE_DEBUG_PRINT) 
-            std::cout << "Skipping addr " << ite->addr << " type " << ite->type << std::endl;
-        } 
-        */
-
-        cache_state[set * WAY_NUM + way].addr = ite->addr;
-        cache_state[set * WAY_NUM + way].timestamp = ite->cycle_demanded;
-        cache_state[set * WAY_NUM + way].type = ite->type;
-        cache_state[set * WAY_NUM + way].accessed = false;
-        cache_state[set * WAY_NUM + way].last_access_timestamp = ite->reuse_dist_lst_timestmp;
-
-        //if (cache_state[set * WAY_NUM + way].pending_accesses == 0) 
-        target_v.push_back(target);
-
-        cache_state[set * WAY_NUM + way].pending_accesses += (int)(ite->miss_or_hit);
-        oracle_pf[set].pop_front();
-        oracle_pf_size--;
-        assert(set_availability[set] >= 0);
-
-        if ((((oracle_pf_size % 10000 == 0) || oracle_pf_size == 0)) && 
-            heartbeat_printed.find(oracle_pf_size) == heartbeat_printed.end()) {
-            std::cout << "Oracle: remaining oracle access = " << oracle_pf_size - pf_issued << " useless: " << cache->sim_stats.pf_useless << std::endl;
-            heartbeat_printed.insert(oracle_pf_size);
-
-            for(auto &set_pf : oracle_pf) 
-              set_pf.shrink_to_fit();
-        }
-
-        if (ORACLE_DEBUG_PRINT) 
-          std::cout << "Runahead PF: addr = " << cache_state[set * WAY_NUM + way].addr << " set " << set << " way " << way << " accesses = " << cache_state[set * WAY_NUM + way].pending_accesses << " added accesses " << ite->miss_or_hit << " before accesses " << before_counter << " type " << ite->type << " cycle " << cache_state[set * WAY_NUM + way].timestamp << std::endl;
-      }
-      else {
-        std::cout << "set " << set << " way " << way << " set_availability " << set_availability[set] << std::endl;
-        assert(false);
-      }
-    } 
-  }
-
-  return target_v;
-}
-
 uint64_t spp_l3::SPP_ORACLE::rollback_prefetch(uint64_t addr) {
   uint64_t set = calc_set(addr); 
   uint64_t latest_cycle = cache_state[set * WAY_NUM].timestamp;
@@ -601,8 +535,6 @@ void spp_l3::SPP_ORACLE::finish() {
   std::cout << "Hits in runahead prefetch list: " << runahead_hits << std::endl;
   std::cout << "Hits in MSHR " << MSHR_hits << std::endl;
   std::cout << "Hits in inflight_writes " << inflight_write_hits << std::endl;
-  std::cout << "Hits in internal_PQ " << internal_PQ_hits << std::endl;
-  std::cout << "Hits in ready to issue prefetch queue " << cs_q_hits << std::endl;
   std::cout << "Hits in oracle_pf " << oracle_pf_hits << std::endl;
   std::cout << "Unhandled misses not replaced " << unhandled_misses_not_replaced << std::endl;
   std::cout << "Unhandled misses replaced " << unhandled_misses_replaced << std::endl;

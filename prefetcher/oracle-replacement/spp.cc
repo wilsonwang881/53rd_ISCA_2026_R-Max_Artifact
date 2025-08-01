@@ -12,13 +12,6 @@ namespace {
   std::map<unique_key, spp_l3::prefetcher> SPP_L3;
 }
 
-void spp_l3::prefetcher::call_poll(CACHE* cache) {
-  if (oracle.oracle_pf.size() == 0) 
-    return; 
-
-  std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> potential_cs_v = oracle.poll(cache);
-}
-
 void spp_l3::prefetcher::update_do_not_fill_queue(std::deque<uint64_t> &dq, uint64_t addr, bool erase, CACHE* cache, std::string q_name){
   uint64_t set = (addr >> 6) & champsim::bitmask(champsim::lg2(cache->NUM_SET));
   auto search_res = std::find_if(dq.begin(), dq.end(), 
@@ -126,16 +119,5 @@ void spp_l3::prefetcher::place_rollback(CACHE* cache, std::deque<SPP_ORACLE::acc
   oracle.cache_state[i].last_access_timestamp = search->reuse_dist_lst_timestmp - search->cycle_demanded + cache->current_cycle;
   oracle.cache_state[i].accessed = true;
   assert(oracle.set_availability[set] >= 0);
-}
-
-bool spp_l3::prefetcher::check_issued(CACHE* cache, uint64_t addr) {
-  uint64_t check_cache = cache->get_way(addr, oracle.calc_set(addr));
-  auto search_mshr = std::find_if(std::begin(cache->MSHR), std::end(cache->MSHR),
-                     [match = addr >> cache->OFFSET_BITS, shamt = cache->OFFSET_BITS]
-                     (const auto& entry) {
-                       return (entry.address >> shamt) == match; 
-                     });
-
-  return (check_cache < cache->NUM_WAY) || (search_mshr != cache->MSHR.end());
 }
 

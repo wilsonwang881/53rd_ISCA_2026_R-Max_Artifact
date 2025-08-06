@@ -94,10 +94,11 @@ void CACHE::prefetcher_cycle_operate() {
   if (champsim::operable::context_switch_mode && !champsim::operable::L2C_have_issued_context_switch_prefetches) {
     // Gather prefetches via the signature and pattern tables.
     if (!pref.context_switch_prefetch_gathered) {
-      pref.context_switch_gather_prefetches(this);
+      //pref.context_switch_gather_prefetches(this);
       pref.context_switch_prefetch_gathered = true;
     }
 
+    /*
     if (pref.page_bitmap.pf_metadata < pref.page_bitmap.pf_metadata_limit) {
       uint64_t pf_addr = 0xffffff5500 + pref.page_bitmap.pf_metadata;
       bool prefetched = this->prefetch_line(pf_addr, true, 0); 
@@ -108,13 +109,14 @@ void CACHE::prefetcher_cycle_operate() {
       if (pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) 
         std::cout << "Page bitmap has requested " << pref.page_bitmap.pf_metadata_limit << " bytes of metadata to L2." << std::endl; 
     }
+    */
    
     if (!champsim::operable::have_cleared_BTB
         && !champsim::operable::have_cleared_BP
         && !champsim::operable::have_cleared_prefetcher
         && champsim::operable::cpu_side_reset_ready
-        && champsim::operable::cache_clear_counter == 7
-        && pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) {
+        && champsim::operable::cache_clear_counter == 7) {
+        //&& pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) {
       champsim::operable::context_switch_mode = false;
       pref.page_bitmap.pf_metadata = 0;
       champsim::operable::cpu_side_reset_ready = false;

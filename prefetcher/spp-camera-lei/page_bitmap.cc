@@ -92,6 +92,8 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
       tb[i].bitmap[block] = true;
       lru_operate(tb, i, TABLE_WAY);
       tb[i].acc_counter++;
+      tb[i].col_access[block % 8]++;
+      tb[i].row_access[block / 8]++;
 
       return;
     }
@@ -133,6 +135,9 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
       for(auto var : filter_blks) 
         tb[i].bitmap[var] = true; 
 
+      tb[i].col_access[block % 8]++;
+      tb[i].row_access[block / 8]++;
+
       lru_operate(tb, i, TABLE_WAY);
       tb[i].acc_counter = filter_blks.size();
 
@@ -155,6 +160,10 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
 
   for(auto var : filter_blks) 
     lru_el->bitmap[var] = true; 
+
+  lru_el->bitmap[block] = true;
+  lru_el->col_access[block % 8]++;
+  lru_el->row_access[block / 8]++;
 
   lru_el->acc_counter = filter_blks.size();
 
@@ -244,6 +253,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
     int page_match = 0;
 
     for (size_t i = 0; i < TABLE_SIZE; i++) {
+      /*
       if (tb[i].page_no == tb[i].page_no_store &&
           tb[i].valid) {
         page_match++;
@@ -254,7 +264,9 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
             cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
         } 
       }
-      else {
+      */
+      //else {
+      if (tb[i].valid) {
         uint64_t page_addr = tb[i].page_no << 12;
         
         //std::cout << "page_no " << tb[i].page_no;
@@ -300,6 +312,13 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   }
 
   std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches from past accesses." << std::endl;
+
+  // Clear the table and the filter.
+  for(auto &tb_e : tb) 
+    tb_e.rst(); 
+
+  for(auto &filter_e : filter) 
+    filter_e.rst(); 
 
   for(auto var : cs_pf)
     pf.push_back(var); 

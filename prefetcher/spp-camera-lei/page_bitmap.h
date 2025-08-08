@@ -32,17 +32,32 @@ namespace spp {
       uint16_t lru_bits;
       uint64_t page_no;
       uint64_t page_no_store;
-      bool bitmap[BITMAP_SIZE] = {false};
-      bool bitmap_store[BITMAP_SIZE] = {false};
-      uint8_t row_counter[BITMAP_SIZE / 8] = {0};
-      uint64_t acc_counter = 0;
-    };
-
-    struct PAGE_ACCESS {
       uint64_t total_access;
-      uint64_t row_access[BITMAP_SIZE / 8];
-      uint64_t col_access[BITMAP_SIZE / 8];
+      bool bitmap[BITMAP_SIZE] = {false};
       std::array<bool, BITMAP_SIZE> block;
+      bool bitmap_store[BITMAP_SIZE] = {false};
+      uint8_t col_access[BITMAP_SIZE / 8] = {0};
+      uint8_t row_access[BITMAP_SIZE / 8] = {0};
+      uint64_t acc_counter = 0;
+
+      void rst() {
+        valid = false;
+        lru_bits = 0;
+        page_no = 0;
+        page_no_store = 0;
+
+        for (size_t i = 0; i < BITMAP_SIZE; i++) {
+          bitmap[i] = false;
+          bitmap_store[i] = false;
+        }
+
+        for (size_t i = 0; i < BITMAP_SIZE / 8; i++) {
+          col_access[i] = 0;
+          row_access[i] = 0;
+        }
+
+        acc_counter = 0;
+      }
     };
 
     public:
@@ -50,8 +65,8 @@ namespace spp {
     uint64_t pf_metadata = 0;
     uint64_t pf_metadata_limit = 35 * 1024;
 
-    std::map<uint64_t, PAGE_ACCESS> last_round_pg_acc;
-    std::map<uint64_t, PAGE_ACCESS> this_round_pg_acc;
+    std::map<uint64_t, PAGE_R> last_round_pg_acc;
+    std::map<uint64_t, PAGE_R> this_round_pg_acc;
 
     std::map<uint64_t, std::map<uint64_t, std::array<bool, BITMAP_SIZE>>> pb_acc;
 

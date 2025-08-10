@@ -251,14 +251,12 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       *way = BLOCK{fill_mshr};
 
       // WL: for context switch experiments.
-      /*
       if (!L2C_name.compare(NAME) &&
           fill_mshr.address >=  0xffffffffff5500 &&
           fill_mshr.address <= (0xffffffffff5500 + 35 * 1024)) {
         way->dirty = true; 
         //std::cout << "Makred block " << fill_mshr.address << " dirty in " << this->NAME << std::endl;
       }
-      */
       // WL: for context switch experiments.
 
       impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address,

@@ -219,6 +219,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   cs_pf.clear();
   std::vector<std::pair<uint64_t, bool>> pf;
   uint64_t L3_counter = 0;
+  uint64_t filter_sum = 0;
 
   if (READ_PAGE_ACCESS) {
     for(auto pair : pb_acc) {
@@ -265,19 +266,13 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
 
         for (size_t j = 0; j < BITMAP_SIZE; j++) {
           if (tb[i].bitmap[j]) {
-            bool pf_check_row = false;
-            bool pf_check_col = false;
-
-            if (tb[i].row_access[j / 8] < (tb[i].acc_counter >> 3)) 
-              pf_check_row = true; 
-
-            if (tb[i].col_access[j % 8] < (tb[i].acc_counter >> 3)) 
-              pf_check_col = true; 
+            bool pf_check_row = tb[i].row_access[j / 8] < (tb[i].acc_counter >> 3);
+            bool pf_check_col = tb[i].col_access[j % 8] < (tb[i].acc_counter >> 3);
 
             if (!(pf_check_col && pf_check_col)) 
               L3_counter++; 
 
-            cs_pf.push_back(std::make_pair(page_addr + (j << 6), !(pf_check_col && pf_check_col))); 
+            cs_pf.push_back(std::make_pair(page_addr + (j << 6), !(pf_check_col && pf_check_row))); 
             //std::cout << " " << j;
           }
         }
@@ -287,7 +282,6 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
     }
 
     std::cout << "Page bitmap page matches: " << page_match << std::endl;
-    uint64_t filter_sum = 0;
 
     for (size_t i = 0; i < FILTER_SIZE; i++) {
       if (filter[i].valid) {
@@ -318,6 +312,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   }
 
   std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches from past accesses." << std::endl;
+  std::cout << "Filter prefetches: " <<filter_sum << std::endl;
   std::cout << "L3 prefetches: " << L3_counter << std::endl;
 
   // Clear the table and the filter.

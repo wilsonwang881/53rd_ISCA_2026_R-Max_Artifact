@@ -106,7 +106,7 @@ void CACHE::prefetcher_cycle_operate() {
         pref.page_bitmap.pf_metadata += 64; 
 
       if (pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) 
-        std::cout << "Page bitmap has requested " << pref.page_bitmap.pf_metadata_limit << " bytes of metadata to L2." << std::endl; 
+        std::cout << "Page bitmap has requested " << pref.page_bitmap.pf_metadata_limit/1024 << " KB of metadata to L2." << std::endl; 
     }
    
     if (!champsim::operable::have_cleared_BTB

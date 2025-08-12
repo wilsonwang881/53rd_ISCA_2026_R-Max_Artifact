@@ -32,12 +32,11 @@ namespace spp {
       uint16_t lru_bits;
       uint64_t page_no;
       uint64_t page_no_store;
-      uint64_t total_access;
       bool bitmap[BITMAP_SIZE] = {false};
       std::array<bool, BITMAP_SIZE> block;
       bool bitmap_store[BITMAP_SIZE] = {false};
-      uint8_t col_access[BITMAP_SIZE / 8] = {0};
-      uint8_t row_access[BITMAP_SIZE / 8] = {0};
+      uint64_t col_access[BITMAP_SIZE / 8] = {0};
+      uint64_t row_access[BITMAP_SIZE / 8] = {0};
       uint64_t acc_counter = 0;
 
       void rst() {
@@ -63,7 +62,7 @@ namespace spp {
     public:
 
     uint64_t pf_metadata = 0;
-    uint64_t pf_metadata_limit = 35 * 1024;
+    uint64_t pf_metadata_limit = 23 * 1024;
 
     std::map<uint64_t, PAGE_R> last_round_pg_acc;
     std::map<uint64_t, PAGE_R> this_round_pg_acc;

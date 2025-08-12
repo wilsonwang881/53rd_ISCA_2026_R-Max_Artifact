@@ -266,8 +266,8 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
 
         for (size_t j = 0; j < BITMAP_SIZE; j++) {
           if (tb[i].bitmap[j]) {
-            bool pf_check_row = tb[i].row_access[j / 8] < ((tb[i].acc_counter >> 4) - 0);
-            bool pf_check_col = tb[i].col_access[j % 8] < ((tb[i].acc_counter >> 4) - 0);
+            bool pf_check_row = tb[i].row_access[j / 8] < ((tb[i].acc_counter >> 3) - 0);
+            bool pf_check_col = tb[i].col_access[j % 8] < ((tb[i].acc_counter >> 3) - 0);
 
             //std::cout << "index " << j <<  " row " << tb[i].row_access[j / 8] << " col " << tb[i].col_access[j % 8] << " " << tb[i].acc_counter << " " << (tb[i].acc_counter >> 4) << std::endl;
 
@@ -276,7 +276,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
               //std::cout << pf_check_row << " " << pf_check_col << " L3" << std::endl;
             }
 
-            cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); //!(pf_check_col && pf_check_row))); 
+            cs_pf.push_back(std::make_pair(page_addr + (j << 6), !(pf_check_col && pf_check_row))); 
             //std::cout << " " << j;
           }
         }
@@ -286,29 +286,22 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
     }
 
     //std::cout << "Page bitmap page matches: " << page_match << std::endl;
-
     for (size_t i = 0; i < FILTER_SIZE; i++) {
       if (filter[i].valid) {
         uint64_t page_addr = filter[i].page_no << 12;
-
-        for (size_t j = 0; j < BITMAP_SIZE; j++) {
-          if (filter[i].bitmap[j]) {
-            cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
-            filter_sum++;
-          }
-        } 
+        uint64_t blocks = std::reduce(std::begin(filter[i].bitmap), std::end(filter[i].bitmap), 0);
+        //std::cout << "blocks = " << blocks << std::endl;
+        
+        if (blocks >= 2) {
+          for (size_t j = 0; j < BITMAP_SIZE; j++) {
+            if (filter[i].bitmap[j]) {
+              cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
+              filter_sum++;
+            }
+          } 
+        }
       } 
     }
-
-    /*
-    for (size_t i = 0; i < TABLE_SIZE; i++) {
-      tb[i].valid = false;
-      
-      for (size_t j = 0; j < BITMAP_SIZE; j++)
-        tb[i].bitmap[j] = false; 
-    }
-    */
-
     /*
     if (RECORD_PAGE_ACCESS) 
       print_page_access(); 

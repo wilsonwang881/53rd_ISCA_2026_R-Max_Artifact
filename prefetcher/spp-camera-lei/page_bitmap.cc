@@ -108,17 +108,17 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
 
   // Allocate new entry for the new page with more than threshold number of blocks.
   std::vector<uint64_t> filter_blks = {block};
+  uint64_t filter_index = 0;
 
   for (size_t i = set * FILTER_WAY; i < (set + 1) * FILTER_WAY; i++) {
     if (filter[i].valid && filter[i].page_no == page) {
       for(size_t j = 0; j < BITMAP_SIZE; j++) {
         if (filter[i].bitmap[j]) 
           filter_blks.push_back(j);
-
-        filter[i].bitmap[j] = false;
       }
 
-      filter[i].valid = false;
+      filter[i].rst();
+      filter_index = i;
       break;
     } 
   }
@@ -148,6 +148,10 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
   auto lru_el = std::max_element(tb.begin() + set * TABLE_WAY, tb.begin() + (set + 1) * TABLE_WAY,
                 [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
 
+  PAGE_R tmpp = *lru_el;
+  filter[filter_index] = tmpp;
+  filter[filter_index].valid = true;
+  filter[filter_index].lru_bits = 0;
   lru_el->rst();
   lru_el->page_no = page;
 

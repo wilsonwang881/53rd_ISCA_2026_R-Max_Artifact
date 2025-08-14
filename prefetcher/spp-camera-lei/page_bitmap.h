@@ -23,7 +23,7 @@ namespace spp {
     constexpr static bool PAGE_BITMAP_DEBUG_PRINT = false;
     constexpr static bool RECORD_PAGE_ACCESS = true;
     constexpr static bool READ_PAGE_ACCESS = false;
-    std::size_t FILTER_THRESHOLD = 10;
+    std::size_t FILTER_THRESHOLD = 5;
     std::string PAGE_BITMAP_ACCESS = "pb_acc.txt";
     std::fstream pb_file;
 
@@ -56,6 +56,29 @@ namespace spp {
         }
 
         acc_counter = 0;
+      }
+
+      uint64_t saturating_counter(uint64_t before, uint64_t threshold) {
+        return before >= threshold ? threshold : (before+1);
+      }
+
+      void row_ct_add(uint64_t blk) {
+        row_access[blk / 8] = saturating_counter(row_access[blk / 8], 0b11111);
+      }
+
+      void col_ct_add(uint64_t blk) {
+        col_access[blk % 8] = saturating_counter(col_access[blk % 8], 0b11111);
+      }
+
+      void acc_ct_add() {
+        acc_counter = saturating_counter(acc_counter, 0b11111111);
+      }
+
+      void ct_add(uint64_t blk) {
+        bitmap[blk] = true;
+        row_ct_add(blk);
+        col_ct_add(blk);
+        acc_ct_add();
       }
     };
 

@@ -89,11 +89,8 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
   // Update the LRU bits.
   for (size_t i = set * TABLE_WAY; i < (set + 1) * TABLE_WAY; i++) {
     if (tb[i].valid && tb[i].page_no == page) {
-      tb[i].bitmap[block] = true;
       lru_operate(tb, i, TABLE_WAY);
-      tb[i].acc_counter++;
-      tb[i].col_access[block % 8]++;
-      tb[i].row_access[block / 8]++;
+      tb[i].ct_add(block);
 
       return;
     }
@@ -130,14 +127,10 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
       tb[i].valid = true;
       tb[i].page_no = page;
 
-      for(auto var : filter_blks) {
-        tb[i].bitmap[var] = true; 
-        tb[i].col_access[var % 8]++;
-        tb[i].row_access[var / 8]++;
-      }
+      for(auto var : filter_blks) 
+        tb[i].ct_add(var);
 
       lru_operate(tb, i, TABLE_WAY);
-      tb[i].acc_counter = filter_blks.size();
 
       return;
     }
@@ -155,14 +148,12 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
   lru_el->rst();
   lru_el->page_no = page;
 
-  for(auto var : filter_blks) {
-    lru_el->bitmap[var] = true; 
-    lru_el->col_access[var % 8]++;
-    lru_el->row_access[var / 8]++;
-  }
+  for(auto var : filter_blks) 
+    lru_el->ct_add(var);
 
-  lru_el->acc_counter = filter_blks.size();
   lru_operate(tb, lru_el - tb.begin(), TABLE_WAY);
+
+  // Remove the prefetches from the replaced page in the table entry.
 }
 
 void spp::SPP_PAGE_BITMAP::evict(uint64_t addr) {
@@ -266,37 +257,28 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
       if (tb[i].valid) {
         uint64_t page_addr = tb[i].page_no << 12;
         
-        //std::cout << "page_no " << tb[i].page_no;
-
         for (size_t j = 0; j < BITMAP_SIZE; j++) {
           if (tb[i].bitmap[j]) {
-            bool pf_check_row = tb[i].row_access[j / 8] < ((tb[i].acc_counter >> 3) - 0);
-            bool pf_check_col = tb[i].col_access[j % 8] < ((tb[i].acc_counter >> 3) - 0);
+            bool pf_check_row = tb[i].row_access[j / 8] < (tb[i].acc_counter >> 3);
+            bool pf_check_col = tb[i].col_access[j % 8] < (tb[i].acc_counter >> 3);
 
-            //std::cout << "index " << j <<  " row " << tb[i].row_access[j / 8] << " col " << tb[i].col_access[j % 8] << " " << tb[i].acc_counter << " " << (tb[i].acc_counter >> 4) << std::endl;
-
-            if ((pf_check_row && pf_check_col)) {
+            if ((pf_check_row && pf_check_col)) 
               L3_counter++; 
-              //std::cout << pf_check_row << " " << pf_check_col << " L3" << std::endl;
-            }
+            else 
+              cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
 
-            cs_pf.push_back(std::make_pair(page_addr + (j << 6), !(pf_check_col && pf_check_row))); 
-            //std::cout << " " << j;
           }
         }
-
-        //std::cout << std::endl;
       }
     }
 
-    //std::cout << "Page bitmap page matches: " << page_match << std::endl;
     for (size_t i = 0; i < FILTER_SIZE; i++) {
       if (filter[i].valid) {
         uint64_t page_addr = filter[i].page_no << 12;
         uint64_t blocks = std::reduce(std::begin(filter[i].bitmap), std::end(filter[i].bitmap), 0);
         //std::cout << "blocks = " << blocks << std::endl;
         
-        if (blocks >= 2) {
+        if (blocks >= 1) {
           for (size_t j = 0; j < BITMAP_SIZE; j++) {
             if (filter[i].bitmap[j]) {
               cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
@@ -316,32 +298,11 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   std::cout << "Filter prefetches: " << filter_sum << std::endl;
   std::cout << "L3 prefetches: " << L3_counter << std::endl;
 
-  /*
-  for(auto var : tb) {
-    if (var.valid) {
-      std::cout << "Page " << var.page_no << " access " << var.acc_counter << std::endl;
-
-      for (size_t i = 0; i < BITMAP_SIZE / 8; i++) 
-        std::cout << std::setw(4) << std::right << var.col_access[i]; 
-
-      std::cout << std::endl;
-
-      for (std::size_t i = 0; i < BITMAP_SIZE / 8; i++) {
-        for (size_t j = 0; j < BITMAP_SIZE / 8; j++)  {
-          std::cout << "   " << (var.bitmap[i * 8 + j] ? "\u25FC" : "\u25FB");
-        }
-
-        std::cout << std::setw(4) << std::right << var.row_access[i] << std::endl; 
-      }
-    }
-  }
-  */
-
   // Clear the table and the filter.
   /*
   for(auto &tb_e : tb) 
     tb_e.rst(); 
-    */
+  */
 
   for(auto &filter_e : filter) 
     filter_e.rst(); 

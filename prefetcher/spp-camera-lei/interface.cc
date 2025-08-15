@@ -72,7 +72,7 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
   auto &pref = ::SPP[{this, cpu}];
   //uint32_t blk_asid_match = (metadata_in >> 2) & 0x1;
 
-  if ((addr != 0)) //!prefetch && 
+  if (addr != 0) // && !prefetch 
     pref.page_bitmap.update(addr);
 
   /*
@@ -94,30 +94,31 @@ void CACHE::prefetcher_cycle_operate() {
   if (champsim::operable::context_switch_mode && !champsim::operable::L2C_have_issued_context_switch_prefetches) {
     // Gather prefetches via the signature and pattern tables.
     if (!pref.context_switch_prefetch_gathered) {
-      //pref.context_switch_gather_prefetches(this);
+      pref.context_switch_gather_prefetches(this);
       pref.context_switch_prefetch_gathered = true;
     }
 
-    /*
     if (pref.page_bitmap.pf_metadata < pref.page_bitmap.pf_metadata_limit) {
-      uint64_t pf_addr = 0xffffffffff5500 + pref.page_bitmap.pf_metadata;
+      uint64_t pf_addr = 0 + pref.page_bitmap.pf_metadata; //0xffffffffff5500 
       bool prefetched = this->prefetch_line(pf_addr, true, 0); 
 
       if (prefetched) 
         pref.page_bitmap.pf_metadata += 64; 
 
       if (pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) 
-        std::cout << "Page bitmap has requested " << pref.page_bitmap.pf_metadata_limit/1024 << " KB of metadata to L2." << std::endl; 
+        std::cout << "Pb has requested " << 1.0 * pref.page_bitmap.pf_metadata_limit/1024 << " KB of metadata to L2." << std::endl; 
     }
-    */
    
     if (!champsim::operable::have_cleared_BTB
         && !champsim::operable::have_cleared_BP
         && !champsim::operable::have_cleared_prefetcher
         && champsim::operable::cpu_side_reset_ready
-        && champsim::operable::cache_clear_counter == 7 ) {
-        //&& pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) {
+        && champsim::operable::cache_clear_counter == 7 //) {
+        && pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit
+        && champsim::operable::Pb_metadata_loaded >= (12 * 1024 - 64)) {
       champsim::operable::context_switch_mode = false;
+      std::cout << "Pb has loaded " << 1.0 * champsim::operable::Pb_metadata_loaded/1024 << " KB of metadata to L2." << std::endl;
+      champsim::operable::Pb_metadata_loaded = 0;
       pref.page_bitmap.pf_metadata = 0;
       champsim::operable::cpu_side_reset_ready = false;
       champsim::operable::L2C_have_issued_context_switch_prefetches = true;

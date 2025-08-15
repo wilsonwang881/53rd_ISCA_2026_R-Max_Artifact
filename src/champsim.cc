@@ -130,6 +130,7 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
         champsim::operable::have_recorded_L1I_states = true;
         champsim::operable::have_recorded_L1D_states = true;
         champsim::operable::context_switch_mode = false;
+        champsim::operable::Pb_metadata_loaded = 0;
         champsim::operable::cpu0_num_retired = cpu_0.num_retired;
         reset_misc::can_record_after_access = false;
       }
@@ -142,6 +143,7 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
       std::cout << std::endl << "Resetting @ins. count = " << std::dec << (unsigned)cpu_0.num_retired << " + " << (unsigned)cpu_0.input_queue.size() << " = " << (unsigned)(cpu_0.num_retired + cpu_0.input_queue.size()) << " at cycle " << cpu_0.current_cycle << std::endl;
       std::cout << "Number of fed in instructions = " << fed_in_instruction << std::endl;
       champsim::operable::context_switch_mode = true;
+      champsim::operable::Pb_metadata_loaded = 0;
       champsim::operable::L2C_have_issued_context_switch_prefetches = false;
       champsim::operable::have_recorded_on_demand_ins_accesses = true;
       champsim::operable::have_recorded_on_demand_data_accesses = true;

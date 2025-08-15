@@ -262,16 +262,39 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
             bool pf_check_row = tb[i].row_access[j / 8] < (tb[i].acc_counter >> 3);
             bool pf_check_col = tb[i].col_access[j % 8] < (tb[i].acc_counter >> 3);
 
-            if ((pf_check_row && pf_check_col)) 
+            // Accumulate the number of blocks accessed in the row.
+            uint64_t row_blk = 0;
+
+            for (size_t k = (j - j % 8); k < ((j - j % 8) + 8); k++) 
+              row_blk += tb[i].bitmap[k]; 
+
+            // Accumulate the number of blocks accesses in the column.
+            uint64_t col_blk = 0;
+
+            for (size_t k = j % 8; k < 64; k += 8) 
+                col_blk += tb[i].bitmap[k]; 
+
+            //std::cout << "At j = " << j << " row_blk = " << row_blk << "/" << tb[i].row_access[j / 8] << " col_blk = " << col_blk  << "/" << tb[i].col_access[j % 8] << std::endl;
+
+            if (tb[i].row_access[j / 8] > 0) 
+              assert(row_blk > 0); 
+
+            if (tb[i].col_access[j % 8] > 0) 
+              assert(col_blk > 0);
+
+            assert(row_blk <= tb[i].row_access[j / 8]);
+            assert(col_blk <= tb[i].col_access[j % 8]);
+
+            if ((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])) 
               L3_counter++; 
             else 
               cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
-
           }
         }
       }
     }
 
+    /*
     for (size_t i = 0; i < FILTER_SIZE; i++) {
       if (filter[i].valid) {
         uint64_t page_addr = filter[i].page_no << 12;
@@ -288,6 +311,8 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
         }
       } 
     }
+    */ 
+
     /*
     if (RECORD_PAGE_ACCESS) 
       print_page_access(); 

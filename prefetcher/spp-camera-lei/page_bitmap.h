@@ -11,6 +11,7 @@
 #include <set>
 #include <fstream>
 #include "champsim_constants.h"
+#include <cassert>
 
 namespace spp {
   class SPP_PAGE_BITMAP {
@@ -23,7 +24,7 @@ namespace spp {
     constexpr static bool PAGE_BITMAP_DEBUG_PRINT = false;
     constexpr static bool RECORD_PAGE_ACCESS = true;
     constexpr static bool READ_PAGE_ACCESS = false;
-    std::size_t FILTER_THRESHOLD = 5;
+    std::size_t FILTER_THRESHOLD = 10;
     std::string PAGE_BITMAP_ACCESS = "pb_acc.txt";
     std::fstream pb_file;
 
@@ -73,19 +74,42 @@ namespace spp {
       void acc_ct_add() {
         acc_counter = saturating_counter(acc_counter, 0b11111111);
       }
+      
+      void ct_check(uint64_t blk) {
+        uint64_t row_blk = 0;
+        uint64_t col_blk = 0;
+
+        for (size_t k = (blk - blk % 8); k < ((blk - blk % 8) + 8); k++) 
+          row_blk += bitmap[k]; 
+
+        for (size_t k = blk % 8; k < 64; k += 8) {
+          if (bitmap[k]) 
+            col_blk += bitmap[k]; 
+        }
+
+        if (row_access[blk / 8] > 0) 
+          assert(row_blk > 0); 
+
+        if (col_access[blk % 8] > 0) 
+          assert(col_blk > 0);
+
+        assert(row_blk <= row_access[blk / 8]);
+        assert(col_blk <= col_access[blk % 8]);
+      }
 
       void ct_add(uint64_t blk) {
         bitmap[blk] = true;
         row_ct_add(blk);
         col_ct_add(blk);
         acc_ct_add();
+        ct_check(blk);
       }
     };
 
     public:
 
     uint64_t pf_metadata = 0;
-    uint64_t pf_metadata_limit = 23 * 1024;
+    uint64_t pf_metadata_limit = 12 * 1024;
 
     std::map<uint64_t, PAGE_R> last_round_pg_acc;
     std::map<uint64_t, PAGE_R> this_round_pg_acc;

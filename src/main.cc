@@ -61,6 +61,7 @@ bool champsim::operable::have_recorded_L1D_states = false;
 bool champsim::operable::have_cleared_prefetcher = false;
 bool champsim::operable::have_cleared_BTB = false;
 bool champsim::operable::have_cleared_BP = false;
+uint64_t champsim::operable::Pb_metadata_loaded = 0;
 uint64_t champsim::operable::context_switch_start_cycle = 0;
 bool champsim::operable::cpu_side_reset_ready = false;
 uint64_t champsim::operable::cache_clear_counter = 0;

@@ -60,21 +60,13 @@ namespace spp {
       }
 
       uint64_t saturating_counter(uint64_t before, uint64_t threshold) {
-        return before >= threshold ? threshold : (before+1);
+        return (before >= threshold) ? threshold : (before+1);
       }
 
-      void row_ct_add(uint64_t blk) {
-        row_access[blk / 8] = saturating_counter(row_access[blk / 8], 0b11111);
+      uint64_t down_saturating_counter(uint64_t before) {
+        return (before == 0) ? 0 : (before - 1);
       }
 
-      void col_ct_add(uint64_t blk) {
-        col_access[blk % 8] = saturating_counter(col_access[blk % 8], 0b11111);
-      }
-
-      void acc_ct_add() {
-        acc_counter = saturating_counter(acc_counter, 0b11111111);
-      }
-      
       void ct_check(uint64_t blk) {
         uint64_t row_blk = 0;
         uint64_t col_blk = 0;
@@ -82,16 +74,18 @@ namespace spp {
         for (size_t k = (blk - blk % 8); k < ((blk - blk % 8) + 8); k++) 
           row_blk += bitmap[k]; 
 
-        for (size_t k = blk % 8; k < 64; k += 8) {
-          if (bitmap[k]) 
-            col_blk += bitmap[k]; 
+        for (size_t k = blk % 8; k < 64; k += 8) 
+          col_blk += bitmap[k]; 
+
+        if (row_blk == 0)
+          row_access[blk / 8] = 0; 
+
+        if (col_blk == 0) 
+          col_access[blk % 8] = 0;
+
+        if (row_blk > row_access[blk / 8]) {
+          std::cout << "row_blk " << row_blk << " row_access " << row_access[blk / 8] << std::endl; 
         }
-
-        if (row_access[blk / 8] > 0) 
-          assert(row_blk > 0); 
-
-        if (col_access[blk % 8] > 0) 
-          assert(col_blk > 0);
 
         assert(row_blk <= row_access[blk / 8]);
         assert(col_blk <= col_access[blk % 8]);
@@ -99,9 +93,20 @@ namespace spp {
 
       void ct_add(uint64_t blk) {
         bitmap[blk] = true;
-        row_ct_add(blk);
-        col_ct_add(blk);
-        acc_ct_add();
+        row_access[blk / 8] = saturating_counter(row_access[blk / 8], 0b11111);
+        col_access[blk % 8] = saturating_counter(col_access[blk % 8], 0b11111);
+        acc_counter = saturating_counter(acc_counter, 0b11111111);
+        //ct_check(blk);
+      }
+
+      void ct_minus(uint64_t blk) {
+        if (bitmap[blk]) {
+          bitmap[blk] = false;
+          row_access[blk / 8] = down_saturating_counter(row_access[blk / 8]);
+          col_access[blk % 8] = down_saturating_counter(col_access[blk % 8]);
+          acc_counter = down_saturating_counter(acc_counter); 
+        }
+
         ct_check(blk);
       }
     };

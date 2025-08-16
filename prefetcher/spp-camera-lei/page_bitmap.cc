@@ -164,7 +164,7 @@ void spp::SPP_PAGE_BITMAP::evict(uint64_t addr) {
   for (size_t i = 0; i < TABLE_SIZE; i++) {
     if (tb[i].page_no == page &&
         tb[i].valid)
-      tb[i].bitmap[block] = false;
+      tb[i].ct_minus(block);
   }
 
   // Check filter.
@@ -285,7 +285,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
             assert(row_blk <= tb[i].row_access[j / 8]);
             assert(col_blk <= tb[i].col_access[j % 8]);
 
-            if ((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])) 
+            if ((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] && col_blk == tb[i].col_access[j % 8])) 
               L3_counter++; 
             else 
               cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
@@ -294,7 +294,6 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
       }
     }
 
-    /*
     for (size_t i = 0; i < FILTER_SIZE; i++) {
       if (filter[i].valid) {
         uint64_t page_addr = filter[i].page_no << 12;
@@ -311,7 +310,6 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
         }
       } 
     }
-    */ 
 
     /*
     if (RECORD_PAGE_ACCESS) 

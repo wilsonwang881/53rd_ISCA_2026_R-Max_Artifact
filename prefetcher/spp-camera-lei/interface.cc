@@ -51,34 +51,38 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   if (useful_prefetch) 
     pref.page_bitmap.update_usefulness(base_addr);
 
-  //if (access_type{type} == access_type::LOAD) {
+  if (access_type{type} == access_type::LOAD) {
     uint64_t page_addr = base_addr >> 12;
     std::pair<uint64_t, bool> demand_itself = std::make_pair(((base_addr >> 6) << 6), true);
     pref.available_prefetches.erase(demand_itself);
+    uint64_t blk_start = (base_addr & 0xFFF) >> 6;
+    blk_start = blk_start - blk_start % 8;
 
     for(auto var : pref.available_prefetches) {
-      if ((var.first >> 12) == page_addr)
+      uint8_t candidate_blk = (var.first & 0xFFF) >> 6;
+
+      if ((var.first >> 12) == page_addr ) //&&
+          //candidate_blk >= (blktart)&&
+          //candidate_blk < (blk_start + 8))
         pref.context_switch_issue_queue.push_back(var); 
     }
 
     for(auto var : pref.context_switch_issue_queue) 
       pref.available_prefetches.erase(var); 
-  //}
+  }
 
   return metadata_in;
 }
 
 uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) {
   auto &pref = ::SPP[{this, cpu}];
-  //uint32_t blk_asid_match = (metadata_in >> 2) & 0x1;
+  uint32_t blk_asid_match = (metadata_in >> 2) & 0x1;
 
-  if (addr != 0) // && !prefetch 
+  if (addr != 0 && addr >= 12 * 1024) // && !prefetch 
     pref.page_bitmap.update(addr);
 
-  /*
-  if (blk_asid_match)
+  if (blk_asid_match == 1)
     pref.page_bitmap.evict(evicted_addr);
-  */
 
   return metadata_in;
 }

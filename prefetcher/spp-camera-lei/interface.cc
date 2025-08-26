@@ -53,20 +53,38 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
 
   //if (access_type{type} == access_type::LOAD) {
     uint64_t page_addr = base_addr >> 12;
-    std::pair<uint64_t, bool> demand_itself = std::make_pair(((base_addr >> 6) << 6), true);
-    pref.available_prefetches.erase(demand_itself);
+    //std::pair<uint64_t, bool>demand_itself = std::make_pair(((base_addr >> 6) << 6), true);//WL
+    std::tuple<uint64_t, bool,int8_t>demand_itself = std::make_tuple(((base_addr >> 6) << 6), true,0);
+    //pref.available_prefetches.erase(demand_itself);
 
-    for(auto var : pref.available_prefetches) {
-      if ((var.first >> 12) == page_addr)
+    //HL
+    //find the matching adr in the avaialble prefetches
+    int8_t group=0;
+
+    for (auto var:pref.available_prefetches)
+    {
+      if(std::get<0>(var)==std::get<0>(demand_itself))
       {
-        //if((base_addr>>9)==((var.first)>>9))
+        group=std::get<2>(var);
+      }
+    }
+    
+    for(auto var : pref.available_prefetches) {
+      if ((std::get<0>(var) >> 12) == page_addr)
+      {
+        if(std::get<2>(var)==group && group!=0)
+        {
+          pref.context_switch_issue_queue.push_back(var);
+        }
+        else if((base_addr>>10)==((std::get<0>(var))>>10))
           pref.context_switch_issue_queue.push_back(var);
 
         //if((((base_addr>>6)&0x3F)%8)==(((var.first>>6)&0x3F)%8))
           //pref.context_switch_issue_queue.push_back(var);
       }
     }
-
+    pref.available_prefetches.erase(demand_itself);//HL
+    
     for(auto var : pref.context_switch_issue_queue) 
       pref.available_prefetches.erase(var); 
   //}

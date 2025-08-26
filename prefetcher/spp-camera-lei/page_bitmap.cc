@@ -82,7 +82,9 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
     this_round_pg_acc[page].total_access++;
     this_round_pg_acc[page].row_access[block / 8]++; 
     this_round_pg_acc[page].col_access[block % 8]++;
+
   }
+
   //HL
   //if(this_round_pg_acc[page].block[block] ==true)
   //{
@@ -92,12 +94,57 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
   // Page already exists.
   // Update the bitmap of that page.
   // Update the LRU bits.
+
+  //HL
+  //check whether or not there is the change of page
+  current_page=page;
+
+  for (size_t i=set*TABLE_WAY;i<(set+1)*TABLE_WAY;i++)
+  {
+    if(tb[i].valid && tb[i].page_no == previous_page && previous_page != current_page)
+    {
+      tb[i].group_access++;
+    }
+    if(tb[i].group_access>CAPACITY)
+    {
+      for(size_t x=0;x<BITMAP_SIZE;x++)
+      {
+        //merge the group
+        if(tb[i].block_indicate[x]>((tb[i].group_access)%CAPACITY))
+        {
+          tb[i].block_indicate[x]=tb[i].block_indicate[x]-1;
+        }       
+      }
+    }
+  }
+  //HL
+  //assign the group_access change if there is more than 7 groups
+
+
   for (size_t i = set * TABLE_WAY; i < (set + 1) * TABLE_WAY; i++) {
     if (tb[i].valid && tb[i].page_no == page) {
       tb[i].bitmap[block] = true;
+
+      //HL
+      tb[i].total_access++;
+      tb[i].row_access[block/8]++;
+      tb[i].col_access[block%8]++;
+      //HL
+
+      //HL
+      //assign the group_number
+      if(tb[i].group_access<=CAPACITY)
+        tb[i].block_indicate[block]=tb[i].group_access;
+      else if(tb[i].group_access>CAPACITY)
+      {
+        tb[i].block_indicate[block]=CAPACITY;
+      }
+      tb[i].first_access=false;
+      //HL
+
       lru_operate(tb, i, TABLE_WAY);
       tb[i].acc_counter++;
-
+      previous_page=current_page;//HL
       return;
     }
   }
@@ -132,14 +179,35 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
       tb[i].valid = true;
       tb[i].page_no = page;
 
+      //HL
+      //first access of the page
+      tb[i].first_access=true;
+      tb[i].group_access=1;
+      
+      //HL
+
       for (size_t j = 0; j < BITMAP_SIZE; j++)
         tb[i].bitmap[j] = false; 
 
-      for(auto var : filter_blks) 
-        tb[i].bitmap[var] = true; 
+      //HL
+      for (size_t j = 0; j < BITMAP_SIZE; j++)
+        tb[i].block_indicate[j] = 0;
+      //HL 
 
+      for(auto var : filter_blks) 
+        {
+          tb[i].bitmap[var] = true;
+          //HL
+          tb[i].block_indicate[var]=tb[i].group_access;
+          //HL
+          tb[i].total_access++;
+          tb[i].row_access[block/8]++;
+          tb[i].col_access[block%8]++;
+          //HL
+        }
       lru_operate(tb, i, TABLE_WAY);
       tb[i].acc_counter = filter_blks.size();
+      previous_page=current_page;//HL
 
       return;
     }
@@ -151,6 +219,10 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
                 [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
 
   lru_el->page_no = page;
+  //HL
+  lru_el->group_access=1;
+  lru_el->first_access=true;
+  //HL
 
   for(auto &var : lru_el->bitmap)
     var = false;
@@ -158,12 +230,28 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
   for(auto &var : lru_el->bitmap_store)
     var = false;
 
+  //HL
+  for(auto &var : lru_el->block_indicate)
+    var = 0;
+  //HL
+
   for(auto var : filter_blks) 
-    lru_el->bitmap[var] = true; 
+    {
+      lru_el->bitmap[var] = true;
+      //HL
+      lru_el->block_indicate[var]=lru_el->group_access;
+      //HL
+      lru_el->total_access++;
+      lru_el->row_access[block/8]++;
+      lru_el->col_access[block%8]++;
+      //HL
+    } 
 
   lru_el->acc_counter = filter_blks.size();
 
   lru_operate(tb, lru_el - tb.begin(), TABLE_WAY);
+
+  previous_page=current_page;//HL
 }
 
 void spp::SPP_PAGE_BITMAP::evict(uint64_t addr) {
@@ -220,9 +308,9 @@ void spp::SPP_PAGE_BITMAP::update_bitmap_store() {
   }
 }
 
-std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t asid) {
+std::vector<std::tuple<uint64_t, bool,int8_t>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t asid) {
   cs_pf.clear();
-  std::vector<std::pair<uint64_t, bool>> pf;
+  std::vector<std::tuple<uint64_t, bool,int8_t>> pf;
 
   if (READ_PAGE_ACCESS) {
     for(auto pair : pb_acc) {
@@ -232,7 +320,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
 
           for (size_t i = 0; i < BITMAP_SIZE; i++) {
             if (sub_pair.second[i]) 
-              cs_pf.push_back(std::make_pair(page_addr + (i << 6), true)); 
+              cs_pf.push_back(std::make_tuple(page_addr + (i << 6), true,1)); 
           }
 
           std::cout << asid << " " << sub_pair.first;
@@ -251,10 +339,10 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
       print_page_access();//HL 
 
     int page_match = 0;
-    /*
+    
     for (size_t i = 0; i < TABLE_SIZE; i++) {
       
-      if (tb[i].page_no == tb[i].page_no_store &&
+      /*if (tb[i].page_no == tb[i].page_no_store &&
           tb[i].valid) {
         page_match++;
         uint64_t page_addr = tb[i].page_no << 12;
@@ -264,7 +352,9 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
             cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
         } 
       }
-      else {
+      */
+      
+      //else {
       
         uint64_t page_addr = tb[i].page_no << 12;
         
@@ -273,20 +363,23 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
         for (size_t j = 0; j < BITMAP_SIZE; j++) {
           if (tb[i].bitmap[j]) {
             //if()
-            cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
+            cs_pf.push_back(std::make_tuple(page_addr + (j << 6), true,tb[i].block_indicate[j])); 
             //std::cout << " " << j;
           }
         }
 
         //std::cout << std::endl;
-      }
+     // }
+      
     }
-    */
+    
     
     //HL
     
     bool row_lock_block=0;
     bool row_lock_total=0;
+
+    //Determine the priority
 
     for(size_t i = 0; i < TABLE_SIZE; i++)
     {
@@ -298,14 +391,60 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
         {
           if(this_round_pg_acc[tb[i].page_no].fraction_row_block[j/8]>1)//condition 2, frequency of each block access in the row
           {
-             cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
+             this_round_pg_acc[tb[i].page_no].tot_hit[j]++;
+          }
+          else if(this_round_pg_acc[tb[i].page_no].fraction_row_block[j/8]==1)
+          {
+            if(this_round_pg_acc[tb[i].page_no].fraction_row_total[j/8]>=(1/8))//condition 3, frequency of row over the total access >(1/8)
+            {
+              this_round_pg_acc[tb[i].page_no].tot_hit[j]++;
+            }
+          }        
+        }
+        //col access
+        if(this_round_pg_acc[tb[i].page_no].column_number[j%8]!=0 &&  tb[i].valid)//condition 1, number of access block in the col
+        {
+          if(this_round_pg_acc[tb[i].page_no].fraction_column_block[j%8]>1)//condition 2, frequency of each block access in the col
+          {
+             this_round_pg_acc[tb[i].page_no].tot_hit[j]++;
+          }
+          else if(this_round_pg_acc[tb[i].page_no].fraction_column_block[j%8]==1)
+          {
+            if(this_round_pg_acc[tb[i].page_no].fraction_column_total[j%8]>=(1/8))//condition 3, frequency of col over the total access >(1/8)
+            {
+              this_round_pg_acc[tb[i].page_no].tot_hit[j]++;
+          
+            }
+          } 
+        }
+      }
+    }
+
+    //actual prefetch
+    for(size_t i = 0; i < TABLE_SIZE; i++)
+    {
+      uint64_t page_addr = tb[i].page_no << 12;
+      for (size_t j = 0; j < BITMAP_SIZE; j++)
+      {
+        //row_access
+        if(this_round_pg_acc[tb[i].page_no].row_number[j/8]!=0 && tb[i].valid)//condition 1, number of access block in the row
+        {
+          if(this_round_pg_acc[tb[i].page_no].fraction_row_block[j/8]>1)//condition 2, frequency of each block access in the row
+          {
+             if(this_round_pg_acc[tb[i].page_no].tot_hit[j]==2)
+                cs_pf.push_back(std::make_tuple(page_addr + (j << 6), true,tb[i].block_indicate[j]));
+             else if(this_round_pg_acc[tb[i].page_no].tot_hit[j]==1)
+                cs_pf.push_back(std::make_tuple(page_addr + (j << 6), false,tb[i].block_indicate[j]));
              row_lock_block=1;
           }
           else if(this_round_pg_acc[tb[i].page_no].fraction_row_block[j/8]==1)
           {
             if(this_round_pg_acc[tb[i].page_no].fraction_row_total[j/8]>=(1/8))//condition 3, frequency of row over the total access >(1/8)
             {
-              cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
+             if(this_round_pg_acc[tb[i].page_no].tot_hit[j]==2)
+                cs_pf.push_back(std::make_tuple(page_addr + (j << 6), true,tb[i].block_indicate[j]));
+             else if(this_round_pg_acc[tb[i].page_no].tot_hit[j]==1)
+                cs_pf.push_back(std::make_tuple(page_addr + (j << 6), false,tb[i].block_indicate[j]));
               row_lock_total=1;
             }
           }        
@@ -317,7 +456,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
           {
             if((row_lock_block==0) && (row_lock_total==0))
             {
-              cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
+              cs_pf.push_back(std::make_tuple(page_addr + (j << 6), false,tb[i].block_indicate[j]));
             }
           }
           else if(this_round_pg_acc[tb[i].page_no].fraction_column_block[j%8]==1)
@@ -326,7 +465,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
             {
               if((row_lock_block==0) && (row_lock_total==0))
               {
-                cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
+                cs_pf.push_back(std::tuple(page_addr + (j << 6), false,tb[i].block_indicate[j]));
               }
             }
           } 
@@ -348,11 +487,18 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
 
         for (size_t j = 0; j < BITMAP_SIZE; j++) {
           if (filter[i].bitmap[j]) {
-            cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
+            cs_pf.push_back(std::make_tuple(page_addr + (j << 6), true,1));
             filter_sum++;
           }
         } 
       } 
+    }
+    // todo::clear the fitler
+    for(size_t i=0;i<FILTER_SIZE;i++)
+    {
+      filter[i].valid=false;
+      filter[i].page_no=0;
+      filter[i].lru_bits=0;    
     }
 
     /*
@@ -503,3 +649,6 @@ void spp::SPP_PAGE_BITMAP::print_page_access() {
 
   std::cout << "Page bitmap same page: " << same_pg_cnt << std::endl;
 }
+
+//HL
+//uint64_t spp::SPP_PAGE_BITMAP::access_block(int group, std::deque<>*group_queue, std::unordered_set<>*group_set) {}

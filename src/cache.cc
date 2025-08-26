@@ -253,7 +253,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       // WL: for context switch experiments.
       if (!L2C_name.compare(NAME) &&
           fill_mshr.address >=  0 &&
-          fill_mshr.address <= (0 + 12 * 1024) && //0xffffffffff5500 
+          fill_mshr.address <= (0 + champsim::operable::context_switch_data_exchange) && //0xffffffffff5500 
           access_type{fill_mshr.type} == access_type::PREFETCH) {
         way->dirty = true; 
         champsim::operable::Pb_metadata_loaded += 64;
@@ -374,6 +374,9 @@ bool CACHE::handle_miss(const tag_lookup_type& handle_pkt)
   }
 
   mshr_type to_allocate{handle_pkt, current_cycle};
+
+  if (!NAME.compare(L1D_name)) 
+    assert(handle_pkt.address >= (12 * 1024));
 
   cpu = handle_pkt.cpu;
 

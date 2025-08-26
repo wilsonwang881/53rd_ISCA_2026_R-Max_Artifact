@@ -137,6 +137,8 @@ public:
 
   static uint64_t Pb_metadata_loaded;
 
+  static uint64_t context_switch_data_exchange;
+
   static uint16_t currently_active_thread_ID;
 
   static std::vector<uint64_t> reset_ins_count_global;

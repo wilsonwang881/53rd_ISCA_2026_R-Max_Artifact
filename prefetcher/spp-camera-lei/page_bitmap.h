@@ -34,7 +34,6 @@ namespace spp {
       uint64_t page_no;
       uint64_t page_no_store;
       bool bitmap[BITMAP_SIZE] = {false};
-      std::array<bool, BITMAP_SIZE> block;
       bool bitmap_store[BITMAP_SIZE] = {false};
       uint64_t col_access[BITMAP_SIZE / 8] = {0};
       uint64_t row_access[BITMAP_SIZE / 8] = {0};
@@ -140,6 +139,7 @@ namespace spp {
     void update_usefulness(uint64_t addr);
     uint64_t calc_set(uint64_t addr);
     void print_page_access();
+    void compare_truth();
   };
 }
 

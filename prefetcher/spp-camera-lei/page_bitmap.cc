@@ -35,13 +35,13 @@ void spp::SPP_PAGE_BITMAP::pb_file_write(uint64_t asid) {
   pb_file.open(PAGE_BITMAP_ACCESS, std::ofstream::app);
 
   for(auto pair : this_round_pg_acc) {
-    uint64_t accu = std::accumulate(pair.second.block.begin(), pair.second.block.end(), 0);
+    uint64_t accu = std::accumulate(pair.second.bitmap, pair.second.bitmap + BITMAP_SIZE, 0);
 
     if (accu > FILTER_THRESHOLD) {
       pb_file << asid << " " << pair.first;
 
       for (size_t i = 0; i < BITMAP_SIZE; i++) 
-        pb_file << (pair.second.block[i] ? "\u25FC" : "\u25FB"); 
+        pb_file << (pair.second.bitmap[i] ? "\u25FC" : "\u25FB"); 
 
       pb_file << std::endl;
     }
@@ -78,7 +78,7 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
   uint64_t block = (addr & 0xFFF) >> 6;
 
   if (RECORD_PAGE_ACCESS) {
-    this_round_pg_acc[page].block[block] = true;
+    this_round_pg_acc[page].bitmap[block] = true;
     this_round_pg_acc[page].acc_counter++;
     this_round_pg_acc[page].row_access[block / 8]++; 
     this_round_pg_acc[page].col_access[block % 8]++;
@@ -161,11 +161,13 @@ void spp::SPP_PAGE_BITMAP::evict(uint64_t addr) {
   uint64_t block = (addr & 0xFFF) >> 6;
 
   // Check tb first.
+  /*
   for (size_t i = 0; i < TABLE_SIZE; i++) {
     if (tb[i].page_no == page &&
         tb[i].valid)
       tb[i].ct_minus(block);
   }
+  */
 
   // Check filter.
   for (size_t i = 0; i < FILTER_SIZE; i++) {
@@ -215,6 +217,8 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   std::vector<std::pair<uint64_t, bool>> pf;
   uint64_t L3_counter = 0;
   uint64_t filter_sum = 0;
+  compare_truth();
+  this_round_pg_acc.clear();
 
   if (READ_PAGE_ACCESS) {
     for(auto pair : pb_acc) {
@@ -285,7 +289,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
             assert(row_blk <= tb[i].row_access[j / 8]);
             assert(col_blk <= tb[i].col_access[j % 8]);
 
-            if ((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] && col_blk == tb[i].col_access[j % 8])) 
+            if ((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])) 
               L3_counter++; 
             else 
               cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
@@ -294,6 +298,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
       }
     }
 
+    /*
     for (size_t i = 0; i < FILTER_SIZE; i++) {
       if (filter[i].valid) {
         uint64_t page_addr = filter[i].page_no << 12;
@@ -310,6 +315,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
         }
       } 
     }
+    */
 
     /*
     if (RECORD_PAGE_ACCESS) 
@@ -326,6 +332,21 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   for(auto &tb_e : tb) 
     tb_e.rst(); 
   */
+
+  uint64_t valid_tb_entry = 0;
+
+  for(auto var : tb) {
+    if (var.valid) 
+      valid_tb_entry++; 
+  }
+
+  pf_metadata_limit = (valid_tb_entry * 100 + 1024 * 42) / 8; 
+  uint64_t remainder = pf_metadata_limit % 64;
+
+  if (remainder != 0) 
+    pf_metadata_limit = pf_metadata_limit + (64 - remainder);
+
+  std::cout << "Pb: pf_metadata_limit " << pf_metadata_limit << " bytes " << 1.0 * pf_metadata_limit / 1024 << " KB."<< std::endl;
 
   for(auto &filter_e : filter) 
     filter_e.rst(); 
@@ -404,7 +425,7 @@ void spp::SPP_PAGE_BITMAP::print_page_access() {
 
   for(auto pair : this_round_pg_acc) {
 
-    uint64_t accu = std::accumulate(pair.second.block.begin(), pair.second.block.end(), 0);
+    uint64_t accu = std::accumulate(pair.second.bitmap, pair.second.bitmap + BITMAP_SIZE, 0);
 
     if (auto search = last_round_pg_acc.find(pair.first); search != last_round_pg_acc.end()) {
 
@@ -419,8 +440,8 @@ void spp::SPP_PAGE_BITMAP::print_page_access() {
 
         for (std::size_t i = 0; i < BITMAP_SIZE / 8; i++) {
           for (size_t j = 0; j < BITMAP_SIZE / 8; j++)  {
-            std::cout << "   " << (last_round_pg_acc[pair.first].block[i * 8 + j] ? "\u25FC" : "\u25FB") << "/";
-            std::cout << (pair.second.block[i * 8 + j] ? "\u25FC" : "\u25FB") << "   ";
+            std::cout << "   " << (last_round_pg_acc[pair.first].bitmap[i * 8 + j] ? "\u25FC" : "\u25FB") << "/";
+            std::cout << (pair.second.bitmap[i * 8 + j] ? "\u25FC" : "\u25FB") << "   ";
           }
 
           std::cout << std::setw(4) << std::right << last_round_pg_acc[pair.first].row_access[i] << "/" << this_round_pg_acc[pair.first].row_access[i] << std::endl; 
@@ -446,4 +467,31 @@ void spp::SPP_PAGE_BITMAP::print_page_access() {
   this_round_pg_acc.clear();
 
   std::cout << "Page bitmap same page: " << same_pg_cnt << std::endl;
+}
+
+void spp::SPP_PAGE_BITMAP::compare_truth() {
+  uint64_t same_pg = 0;
+  uint64_t same_blk = 0;
+  uint64_t total_pg = this_round_pg_acc.size();
+  uint64_t total_blk = 0;
+  uint64_t more_than_threshold_pg = 0;
+
+  for(auto truth: this_round_pg_acc) {
+    for(auto pb : tb) {
+      if (pb.page_no == truth.first) {
+        same_pg++; 
+        same_blk += std::accumulate(pb.bitmap, pb.bitmap + BITMAP_SIZE, 0);
+      }
+    } 
+
+    uint64_t blk_cnt = std::accumulate(truth.second.bitmap, truth.second.bitmap + BITMAP_SIZE, 0);
+
+    if (blk_cnt > FILTER_THRESHOLD) 
+      more_than_threshold_pg++; 
+
+    total_blk += blk_cnt;
+  }
+
+  std::cout << "Pb: same page: " << same_pg << " more than threshold page: " << more_than_threshold_pg << " total page: " << total_pg << std::endl;
+  std::cout << "Pb: same blk: " << same_blk << " total blk: " << total_blk << std::endl;
 }

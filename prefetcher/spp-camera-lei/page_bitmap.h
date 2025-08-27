@@ -141,6 +141,7 @@ namespace spp {
     uint64_t calc_set(uint64_t addr);
     void print_page_access();
     void compare_truth();
+    void adjust_filter_threshold();
   };
 }
 

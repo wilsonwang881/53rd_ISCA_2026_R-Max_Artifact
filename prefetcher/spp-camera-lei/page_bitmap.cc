@@ -218,6 +218,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   uint64_t L3_counter = 0;
   uint64_t filter_sum = 0;
   compare_truth();
+  //adjust_filter_threshold();
   this_round_pg_acc.clear();
 
   if (READ_PAGE_ACCESS) {
@@ -512,6 +513,69 @@ void spp::SPP_PAGE_BITMAP::compare_truth() {
     for (size_t j = 0; j < std::log(pg_dist[i]) * 10; j++) 
       std::cout << "-";
 
-    std::cout << pg_dist[i] << " | " << tb_dist[i] << std::endl;
+    std::cout << pg_dist[i] << std::endl;
+  }
+
+  std::cout << "============================" << std::endl;
+
+  for (size_t i = 1; i <= BITMAP_SIZE; i++) {
+    std::cout << "No. blocks: " << i << "->"; 
+
+    for (size_t j = 0; j < std::log(tb_dist[i]) * 10; j++) 
+      std::cout << "-";
+
+    std::cout << tb_dist[i] << std::endl;
   }
 }
+
+void spp::SPP_PAGE_BITMAP::adjust_filter_threshold() {
+  uint64_t max = 0;
+  uint64_t max_index = 0;
+  std::map<uint64_t, uint64_t> pk_mx;
+
+  // Find the table max.
+  for (size_t i = 1; i <= BITMAP_SIZE; i++) 
+    pk_mx[i] = 0; 
+
+  for(auto var : tb) {
+    if (var.valid) 
+      pk_mx[std::accumulate(var.bitmap, var.bitmap + BITMAP_SIZE, 0)]++;
+  }
+
+  for (size_t i = 1; i <= BITMAP_SIZE; i++) {
+    if (pk_mx[i] > max) {
+      max = pk_mx[i];
+      max_index = i;
+    } 
+  }
+
+  if (max_index > FILTER_THRESHOLD) 
+    FILTER_THRESHOLD = FILTER_THRESHOLD + (max_index - FILTER_THRESHOLD) / 2;
+  else 
+    FILTER_THRESHOLD = max_index; //FILTER_THRESHOLD - (FILTER_THRESHOLD - max) / 2;
+
+  std::cout << "Pb: filter threshold adjusted to " << FILTER_THRESHOLD << std::endl;
+
+  // Find the filter max.
+  max = 0;
+  max_index = 0;
+  std::map<uint64_t, uint64_t> ft_mx;
+
+  for (size_t i = 1; i <= BITMAP_SIZE; i++) 
+    ft_mx[i] = 0; 
+
+  for(auto var : filter) {
+    if (var.valid) 
+      ft_mx[std::accumulate(var.bitmap, var.bitmap + BITMAP_SIZE, 0)]++;
+  }
+
+  for (size_t i = 1; i <= BITMAP_SIZE; i++) {
+    if (ft_mx[i] > max) {
+      max = ft_mx[i];
+      max_index = i;
+    } 
+  }
+
+  std::cout << "Filter max: " << max_index << std::endl;
+}
+

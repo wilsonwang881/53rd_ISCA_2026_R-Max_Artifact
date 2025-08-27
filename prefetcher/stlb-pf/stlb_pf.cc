@@ -103,7 +103,7 @@ void stlb_pf::prefetcher::gather_pf() {
 }
 
 void stlb_pf::prefetcher::issue(CACHE* cache) {
-  //if (cache->current_cycle >= (last_issued_pf_moment + wait_interval) && (cache->get_mshr_occupancy() < 10)) {
+  if (cache->current_cycle >= (last_issued_pf_moment + wait_interval) && (cache->get_mshr_occupancy() < 10)) {
     bool pf_res = cache->prefetch_line(cs_q.front(), true, 0); 
     
     if (pf_res) {
@@ -111,7 +111,7 @@ void stlb_pf::prefetcher::issue(CACHE* cache) {
       cs_q.pop_front(); 
       last_issued_pf_moment = cache->current_cycle;
     }
-  //}
+  }
 }
 
 void stlb_pf::prefetcher::update_pf_stats() {

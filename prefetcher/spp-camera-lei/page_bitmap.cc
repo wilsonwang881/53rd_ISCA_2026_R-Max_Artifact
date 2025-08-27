@@ -472,19 +472,30 @@ void spp::SPP_PAGE_BITMAP::print_page_access() {
 void spp::SPP_PAGE_BITMAP::compare_truth() {
   uint64_t same_pg = 0;
   uint64_t same_blk = 0;
+  uint64_t pg_blk = 0;
   uint64_t total_pg = this_round_pg_acc.size();
   uint64_t total_blk = 0;
   uint64_t more_than_threshold_pg = 0;
+  std::map<uint64_t, uint64_t> pg_dist;
+  std::map<uint64_t, uint64_t> tb_dist;
+
+  for (size_t i = 1; i <= BITMAP_SIZE; i++) {
+    pg_dist[i] = 0; 
+    tb_dist[i] = 0;
+  }
 
   for(auto truth: this_round_pg_acc) {
     for(auto pb : tb) {
       if (pb.page_no == truth.first) {
         same_pg++; 
-        same_blk += std::accumulate(pb.bitmap, pb.bitmap + BITMAP_SIZE, 0);
+        pg_blk = std::accumulate(pb.bitmap, pb.bitmap + BITMAP_SIZE, 0);
+        same_blk += pg_blk;
+        tb_dist[pg_blk]++;
       }
     } 
 
     uint64_t blk_cnt = std::accumulate(truth.second.bitmap, truth.second.bitmap + BITMAP_SIZE, 0);
+    pg_dist[blk_cnt]++;
 
     if (blk_cnt > FILTER_THRESHOLD) 
       more_than_threshold_pg++; 
@@ -493,5 +504,14 @@ void spp::SPP_PAGE_BITMAP::compare_truth() {
   }
 
   std::cout << "Pb: same page: " << same_pg << " more than threshold page: " << more_than_threshold_pg << " total page: " << total_pg << std::endl;
-  std::cout << "Pb: same blk: " << same_blk << " total blk: " << total_blk << std::endl;
+  std::cout << "Pb: same blk: " << same_blk << " total blk: " << total_blk << " average no. blocks per recorded page: " << 1.0 * same_blk / same_pg << std::endl;
+
+  for (size_t i = 1; i <= BITMAP_SIZE; i++) {
+    std::cout << "No. blocks: " << i << "->"; 
+
+    for (size_t j = 0; j < std::log(pg_dist[i]) * 10; j++) 
+      std::cout << "-";
+
+    std::cout << pg_dist[i] << " | " << tb_dist[i] << std::endl;
+  }
 }

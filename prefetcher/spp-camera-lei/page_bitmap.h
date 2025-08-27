@@ -10,6 +10,7 @@
 #include <vector>
 #include <set>
 #include <fstream>
+#include <math.h>
 #include "champsim_constants.h"
 #include <cassert>
 

@@ -123,8 +123,8 @@ void CACHE::prefetcher_cycle_operate() {
         && !champsim::operable::have_cleared_prefetcher
         && champsim::operable::cpu_side_reset_ready
         && champsim::operable::cache_clear_counter == 7 //) {
-        && pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit
-        && champsim::operable::Pb_metadata_loaded >= (champsim::operable::context_switch_data_exchange - 64)) {
+        && pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) {
+        //&& champsim::operable::Pb_metadata_loaded >= (champsim::operable::context_switch_data_exchange - 64)) {
       champsim::operable::context_switch_mode = false;
       std::cout << "Pb has loaded " << 1.0 * champsim::operable::Pb_metadata_loaded/1024 << " KB of metadata to L2." << std::endl;
       champsim::operable::Pb_metadata_loaded = 0;

@@ -290,23 +290,26 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
             assert(row_blk <= tb[i].row_access[j / 8]);
             assert(col_blk <= tb[i].col_access[j % 8]);
 
+            cs_pf.push_back(std::make_pair(page_addr + (j << 6), !(pf_check_col && pf_check_row))); 
+
+            /*
             if ((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])) 
               L3_counter++; 
             else 
               cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
+            */
           }
         }
       }
     }
 
-    /*
     for (size_t i = 0; i < FILTER_SIZE; i++) {
       if (filter[i].valid) {
         uint64_t page_addr = filter[i].page_no << 12;
         uint64_t blocks = std::reduce(std::begin(filter[i].bitmap), std::end(filter[i].bitmap), 0);
         //std::cout << "blocks = " << blocks << std::endl;
         
-        if (blocks >= 1) {
+        if (blocks >= 2) {
           for (size_t j = 0; j < BITMAP_SIZE; j++) {
             if (filter[i].bitmap[j]) {
               cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
@@ -316,8 +319,6 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
         }
       } 
     }
-    */
-
     /*
     if (RECORD_PAGE_ACCESS) 
       print_page_access(); 

@@ -2,14 +2,12 @@
 #include <cstddef>
 #include <map>
 #include <numeric>
-#include <limits>
 #include <iostream>
 #include <iomanip>
 #include <deque>
 #include <algorithm>
 #include <vector>
 #include <set>
-#include <fstream>
 #include <math.h>
 #include "champsim_constants.h"
 #include <cassert>
@@ -22,20 +20,13 @@ namespace spp {
     constexpr static std::size_t BITMAP_SIZE = 64;
     constexpr static uint64_t FILTER_WAY = 512;
     constexpr static std::size_t FILTER_SIZE = TABLE_SET * FILTER_WAY;
-    constexpr static bool PAGE_BITMAP_DEBUG_PRINT = false;
-    constexpr static bool RECORD_PAGE_ACCESS = true;
-    constexpr static bool READ_PAGE_ACCESS = false;
     std::size_t FILTER_THRESHOLD = 10;
-    std::string PAGE_BITMAP_ACCESS = "pb_acc.txt";
-    std::fstream pb_file;
 
     struct PAGE_R {
       bool valid = false;
       uint16_t lru_bits;
       uint64_t page_no;
-      uint64_t page_no_store;
       bool bitmap[BITMAP_SIZE] = {false};
-      bool bitmap_store[BITMAP_SIZE] = {false};
       uint64_t col_access[BITMAP_SIZE / 8] = {0};
       uint64_t row_access[BITMAP_SIZE / 8] = {0};
       uint64_t acc_counter = 0;
@@ -44,12 +35,9 @@ namespace spp {
         valid = false;
         lru_bits = 0;
         page_no = 0;
-        page_no_store = 0;
 
-        for (size_t i = 0; i < BITMAP_SIZE; i++) {
+        for (size_t i = 0; i < BITMAP_SIZE; i++)
           bitmap[i] = false;
-          bitmap_store[i] = false;
-        }
 
         for (size_t i = 0; i < BITMAP_SIZE / 8; i++) {
           col_access[i] = 0;
@@ -57,14 +45,6 @@ namespace spp {
         }
 
         acc_counter = 0;
-      }
-
-      uint64_t saturating_counter(uint64_t before, uint64_t threshold) {
-        return (before >= threshold) ? threshold : (before+1);
-      }
-
-      uint64_t down_saturating_counter(uint64_t before) {
-        return (before == 0) ? 0 : (before - 1);
       }
 
       void ct_check(uint64_t blk) {
@@ -93,18 +73,25 @@ namespace spp {
 
       void ct_add(uint64_t blk) {
         bitmap[blk] = true;
-        row_access[blk / 8] = saturating_counter(row_access[blk / 8], 0b11111);
-        col_access[blk % 8] = saturating_counter(col_access[blk % 8], 0b11111);
-        acc_counter = saturating_counter(acc_counter, 0b11111111);
+        row_access[blk / 8] = row_access[blk / 8] >= 0b11111 ? 0b11111 : (row_access[blk / 8] + 1);
+        col_access[blk % 8] = col_access[blk % 8] >= 0b11111 ? 0b11111 : (col_access[blk % 8] + 1);
+        acc_counter = acc_counter >= 0b11111111 ? 0b11111111 : (acc_counter + 1);
         //ct_check(blk);
+      }
+
+      void ct_add_non_saturate(uint64_t blk) {
+        bitmap[blk] = true;
+        row_access[blk / 8]++;
+        col_access[blk % 8]++;
+        acc_counter++;
       }
 
       void ct_minus(uint64_t blk) {
         if (bitmap[blk]) {
           bitmap[blk] = false;
-          row_access[blk / 8] = down_saturating_counter(row_access[blk / 8]);
-          col_access[blk % 8] = down_saturating_counter(col_access[blk % 8]);
-          acc_counter = down_saturating_counter(acc_counter); 
+          row_access[blk / 8] = row_access[blk / 8] > 0 ? (row_access[blk / 8] - 1) : 0;
+          col_access[blk % 8] = col_access[blk % 8] > 0 ? (col_access[blk % 8] - 1) : 0;
+          acc_counter = acc_counter > 0 ? (acc_counter - 1) : 0;
         }
 
         ct_check(blk);
@@ -129,12 +116,9 @@ namespace spp {
     uint64_t issued_cs_pf_hit;
     uint64_t total_issued_cs_pf;
 
-    void pb_file_read();
-    void pb_file_write(uint64_t asid);
     void lru_operate(std::vector<PAGE_R> &l, std::size_t i, uint64_t way);
     void update(uint64_t addr);
     void evict(uint64_t addr);
-    void update_bitmap_store();
     std::vector<std::pair<uint64_t, bool>> gather_pf(uint64_t asid);
     bool filter_operate(uint64_t addr);
     void update_usefulness(uint64_t addr);

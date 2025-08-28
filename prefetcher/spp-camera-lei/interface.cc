@@ -19,7 +19,6 @@ void CACHE::prefetcher_initialize() {
 
   auto &pref = ::SPP[{this, cpu}];
   pref.prefetcher_state_file.open("prefetcher_states.txt", std::ios::out);
-  pref.page_bitmap.pb_file_read();
 }
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) {
@@ -72,7 +71,7 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
   auto &pref = ::SPP[{this, cpu}];
   //uint32_t blk_asid_match = (metadata_in >> 2) & 0x1;
 
-  if (addr != 0 && addr >= 12 * 1024) // && !prefetch 
+  if (addr != 0 && addr >= 13 * 1024) // && !prefetch 
     pref.page_bitmap.update(addr);
 
   /*
@@ -100,7 +99,7 @@ void CACHE::prefetcher_cycle_operate() {
     }
 
     if (pref.page_bitmap.pf_metadata < pref.page_bitmap.pf_metadata_limit) {
-      uint64_t pf_addr = 0 + pref.page_bitmap.pf_metadata; //0xffffffffff5500 
+      uint64_t pf_addr = 64 + pref.page_bitmap.pf_metadata; //0xffffffffff5500 
       bool prefetched = this->prefetch_line(pf_addr, true, 0); 
 
       if (prefetched) 
@@ -125,7 +124,6 @@ void CACHE::prefetcher_cycle_operate() {
       champsim::operable::L2C_have_issued_context_switch_prefetches = true;
       champsim::operable::cache_clear_counter = 0;
       pref.context_switch_prefetch_gathered = false;
-      //pref.page_bitmap.update_bitmap_store();
       champsim::operable::emptied_cache.clear();
       pref.page_bitmap.issued_cs_pf.clear();
       pref.clear_states();

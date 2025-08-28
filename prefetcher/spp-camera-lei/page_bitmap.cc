@@ -158,9 +158,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
           assert(row_blk <= tb[i].row_access[j / 8]);
           assert(col_blk <= tb[i].col_access[j % 8]);
 
-          if ((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])) 
-            L3_counter++; 
-          else 
+          if (!((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])))
             cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
         }
       }

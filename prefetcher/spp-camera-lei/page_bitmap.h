@@ -15,11 +15,13 @@
 namespace spp {
   class SPP_PAGE_BITMAP {
     constexpr static uint64_t TABLE_SET = 1;
+    constexpr static uint64_t LV1_FILTER_WAY = 1024;
+    constexpr static uint64_t LV1_FILTER_SIZE = TABLE_SET * LV1_FILTER_WAY;
+    constexpr static uint64_t FILTER_WAY = 512;
+    constexpr static std::size_t FILTER_SIZE = TABLE_SET * FILTER_WAY;
     constexpr static uint64_t TABLE_WAY = 512;
     constexpr static std::size_t TABLE_SIZE = TABLE_SET * TABLE_WAY;
     constexpr static std::size_t BITMAP_SIZE = 64;
-    constexpr static uint64_t FILTER_WAY = 512;
-    constexpr static std::size_t FILTER_SIZE = TABLE_SET * FILTER_WAY;
     std::size_t FILTER_THRESHOLD = 10;
 
     struct PAGE_R {
@@ -106,10 +108,9 @@ namespace spp {
     std::map<uint64_t, PAGE_R> last_round_pg_acc;
     std::map<uint64_t, PAGE_R> this_round_pg_acc;
 
-    std::map<uint64_t, std::map<uint64_t, std::array<bool, BITMAP_SIZE>>> pb_acc;
-
-    std::vector<PAGE_R> tb = std::vector<PAGE_R>(TABLE_SIZE);
+    std::vector<PAGE_R> lv1_filter = std::vector<PAGE_R>(LV1_FILTER_SIZE);
     std::vector<PAGE_R> filter = std::vector<PAGE_R>(FILTER_SIZE);
+    std::vector<PAGE_R> tb = std::vector<PAGE_R>(TABLE_SIZE);
 
     std::deque<std::pair<uint64_t, bool>> cs_pf;
     std::set<uint64_t> issued_cs_pf;
@@ -118,8 +119,11 @@ namespace spp {
 
     void lru_operate(std::vector<PAGE_R> &l, std::size_t i, uint64_t way);
     void update(uint64_t addr);
+    void promote_from_filter_to_tb(uint64_t addr);
+    void promote_from_lv1_filter_to_filter(uint64_t addr);
     void evict(uint64_t addr);
     std::vector<std::pair<uint64_t, bool>> gather_pf(uint64_t asid);
+    void lv1_filter_operate(uint64_t);
     bool filter_operate(uint64_t addr);
     void update_usefulness(uint64_t addr);
     uint64_t calc_set(uint64_t addr);

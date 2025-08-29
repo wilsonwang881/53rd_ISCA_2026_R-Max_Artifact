@@ -37,7 +37,7 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
       lru_operate(tb, i, TABLE_WAY);
       tb[i].ct_add(block);
 
-      return;
+      return; // Table updated.
     }
   }
 
@@ -45,8 +45,16 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
   // Check or update filter first.
   bool check_filter = filter_operate(addr);
 
-  if (!check_filter)
-    return; 
+  if (check_filter)
+    return; // Filter updated.
+  
+  lv1_filter_operate(addr);
+}
+
+void spp::SPP_PAGE_BITMAP::promote_from_filter_to_tb(uint64_t addr) {
+  uint64_t set = calc_set(addr);
+  uint64_t page = addr >> 12;
+  uint64_t block = (addr & 0xFFF) >> 6;
 
   // Allocate new entry for the new page with more than threshold number of blocks.
   std::vector<uint64_t> filter_blks = {block};
@@ -87,16 +95,75 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
                 [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
 
   PAGE_R tmpp = *lru_el;
+  /*
   filter[filter_index] = tmpp;
   filter[filter_index].valid = true;
   filter[filter_index].lru_bits = 0;
+  */
+  filter[filter_index].rst();
   lru_el->rst();
+  lru_el->valid = true;
   lru_el->page_no = page;
 
   for(auto var : filter_blks) 
     lru_el->ct_add(var);
 
   lru_operate(tb, lru_el - tb.begin(), TABLE_WAY);
+}
+
+void spp::SPP_PAGE_BITMAP::promote_from_lv1_filter_to_filter(uint64_t addr) {
+  uint64_t set = calc_set(addr);
+  uint64_t page = addr >> 12;
+  uint64_t block = (addr & 0xFFF) >> 6;
+
+  // Allocate new entry for the new page with more than threshold number of blocks.
+  std::vector<uint64_t> lv1_filter_blks = {block};
+  uint64_t lv1_filter_index = 0;
+
+  for (size_t i = set * LV1_FILTER_WAY; i < (set + 1) * LV1_FILTER_WAY; i++) {
+    if (lv1_filter[i].valid && lv1_filter[i].page_no == page) {
+      for(size_t j = 0; j < BITMAP_SIZE; j++) {
+        if (lv1_filter[i].bitmap[j]) 
+          lv1_filter_blks.push_back(j);
+      }
+
+      lv1_filter[i].rst();
+      lv1_filter_index = i;
+      break;
+    } 
+  }
+
+  // Find an invalid entry in the filter.
+  for (size_t i = set * FILTER_WAY; i < (set + 1) * FILTER_WAY; i++) {
+    if (!filter[i].valid) {
+      filter[i].rst();
+      filter[i].valid = true;
+      filter[i].page_no = page;
+
+      for(auto var : lv1_filter_blks) 
+        filter[i].bitmap[var] = true;
+
+      lru_operate(filter, i, FILTER_WAY);
+
+      return;
+    }
+  }
+
+  // All filter entries valid.
+  // Find LRU entry.
+  auto lru_el = std::max_element(filter.begin() + set * FILTER_WAY, filter.begin() + (set + 1) * FILTER_WAY,
+                [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
+
+  PAGE_R tmpp = *lru_el;
+  lv1_filter[lv1_filter_index].valid = false;
+  lv1_filter[lv1_filter_index].lru_bits = 0;
+  lru_el->rst();
+  lru_el->page_no = page;
+
+  for(auto var : lv1_filter_blks) 
+    lru_el->ct_add(var);
+
+  lru_operate(filter, lru_el - filter.begin(), FILTER_WAY);
 }
 
 void spp::SPP_PAGE_BITMAP::evict(uint64_t addr) {
@@ -165,7 +232,6 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
     }
   }
 
-  /*
   for (size_t i = 0; i < FILTER_SIZE; i++) {
     if (filter[i].valid) {
       uint64_t page_addr = filter[i].page_no << 12;
@@ -181,7 +247,6 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
       }
     } 
   }
-  */
 
   std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches from past accesses." << std::endl;
   std::cout << "Filter prefetches: " << filter_sum << std::endl;
@@ -201,6 +266,9 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
 
   std::cout << "Pb: pf_metadata_limit " << pf_metadata_limit << " bytes " << 1.0 * pf_metadata_limit / 1024 << " KB."<< std::endl;
 
+  for(auto &lv1_e : lv1_filter) 
+    lv1_e.rst(); 
+
   for(auto &filter_e : filter) 
     filter_e.rst(); 
 
@@ -208,6 +276,53 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
     pf.push_back(var); 
 
   return pf;
+}
+
+void spp::SPP_PAGE_BITMAP::lv1_filter_operate(uint64_t addr) {
+  uint64_t set = calc_set(addr);
+  uint64_t page = addr >> 12;
+  uint64_t block = (addr & 0xFFF) >> 6;
+
+  for (size_t i = 0; i < LV1_FILTER_SIZE; i++) {
+    if (lv1_filter[i].valid && lv1_filter[i].page_no == page) {
+      lv1_filter[i].bitmap[block] = true;
+      lru_operate(lv1_filter, i, LV1_FILTER_WAY);
+      uint64_t accu = std::accumulate(lv1_filter[i].bitmap, lv1_filter[i].bitmap + BITMAP_SIZE, 0);
+
+      if (accu > 2) 
+        promote_from_lv1_filter_to_filter(addr); 
+
+      return;
+    } 
+  }
+
+  // Allocate new entry in the lv1_filter.
+  // If any invalid entry exists.
+  for (size_t i = set * LV1_FILTER_WAY; i < (set + 1) * LV1_FILTER_WAY; i++) {
+    if (!lv1_filter[i].valid) {
+      lv1_filter[i].rst();
+      lv1_filter[i].valid = true;
+      lv1_filter[i].page_no = page;
+      lv1_filter[i].bitmap[block] = true;
+      lru_operate(lv1_filter, i, LV1_FILTER_WAY);
+      //std::cout << "Allocated in lv1 filter i = " << i << std::endl;
+
+      return;
+    } 
+  }
+
+  // If filter full, use LRU to replace.
+  auto lru_el = std::max_element(lv1_filter.begin() + set * LV1_FILTER_WAY, lv1_filter.begin() + (set + 1) * LV1_FILTER_WAY,
+                [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
+
+  lru_el->rst();
+  lru_el->page_no = page;
+  lru_el->valid = true;
+  lru_el->bitmap[block] = true;
+  lru_operate(lv1_filter, lru_el - lv1_filter.begin(), LV1_FILTER_WAY);
+  //std::cout << "replaced" << std::endl;
+
+  return;
 }
 
 bool spp::SPP_PAGE_BITMAP::filter_operate(uint64_t addr) {
@@ -222,39 +337,12 @@ bool spp::SPP_PAGE_BITMAP::filter_operate(uint64_t addr) {
       lru_operate(filter, i, FILTER_WAY);
       uint64_t accu = std::accumulate(filter[i].bitmap, filter[i].bitmap + BITMAP_SIZE, 0);
 
-      return accu > FILTER_THRESHOLD;
+      if (accu > FILTER_THRESHOLD) 
+        promote_from_filter_to_tb(addr); 
+
+      return true;
     } 
   }
-
-  // Allocate new entry in the filter.
-  // If any invalid entry exists.
-  for (size_t i = set * FILTER_WAY; i < (set + 1) * FILTER_WAY; i++) {
-    if (!filter[i].valid) {
-      filter[i].valid = true;
-      filter[i].page_no = page;
-
-      for (size_t j = 0; j < BITMAP_SIZE; j++) 
-        filter[i].bitmap[j] = false; 
-
-      filter[i].bitmap[block] = true;
-      lru_operate(filter, i, FILTER_WAY);
-
-      return false;
-    } 
-  }
-
-  // If filter full, use LRU to replace.
-  auto lru_el = std::max_element(filter.begin() + set * FILTER_WAY, filter.begin() + (set + 1) * FILTER_WAY,
-                [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
-
-  lru_el->page_no = page;
-  lru_el->valid = true;
-
-  for(auto &var : lru_el->bitmap)
-    var = false;
-
-  lru_el->bitmap[block] = true;
-  lru_operate(filter, lru_el - filter.begin(), FILTER_WAY);
 
   return false;
 }
@@ -416,7 +504,7 @@ void spp::SPP_PAGE_BITMAP::adjust_filter_threshold() {
       ft_mx[std::accumulate(var.bitmap, var.bitmap + BITMAP_SIZE, 0)]++;
   }
 
-  for (size_t i = 1; i <= BITMAP_SIZE; i++) {
+  for (size_t i = 2; i <= BITMAP_SIZE; i++) {
     if (ft_mx[i] > max) {
       max = ft_mx[i];
       max_index = i;

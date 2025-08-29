@@ -71,7 +71,7 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
   auto &pref = ::SPP[{this, cpu}];
   //uint32_t blk_asid_match = (metadata_in >> 2) & 0x1;
 
-  if (addr != 0 && addr >= 13 * 1024) // && !prefetch 
+  if (addr != 0 && addr >= 13 * 1024 && !prefetch) 
     pref.page_bitmap.update(addr);
 
   /*

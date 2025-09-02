@@ -28,6 +28,7 @@ namespace spp {
 
     //HL
     constexpr static int CAPACITY=7;
+    constexpr static int COUNT_MAX=3;
     //HL
 
     std::size_t FILTER_THRESHOLD = 10;
@@ -42,7 +43,9 @@ namespace spp {
       uint16_t lru_bits;
       uint64_t page_no;
       uint64_t page_no_store;
-      bool bitmap[BITMAP_SIZE] = {false};
+      //bool bitmap[BITMAP_SIZE] = {false};//WL
+      int bitmap[BITMAP_SIZE]={0};//HL
+      bool saturated_bit;//HL
       bool bitmap_store[BITMAP_SIZE] = {false};
       uint8_t row_counter[BITMAP_SIZE / 8] = {0};
       uint64_t acc_counter = 0;

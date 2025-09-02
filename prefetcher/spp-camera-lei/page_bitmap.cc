@@ -2,6 +2,10 @@
 
 void spp::SPP_PAGE_BITMAP::lru_operate(std::vector<PAGE_R> &l, std::size_t i, uint64_t way) {
   uint64_t set_begin = i - (i % way);
+  l[i].lru_bits = 0;
+
+  for (size_t j = set_begin; j < set_begin + way; j++) 
+    l[j].lru_bits++;
 
   for (size_t j = set_begin; j < set_begin + way; j++) {
     if (l[j].lru_bits >= 0x7FF) {
@@ -15,11 +19,6 @@ void spp::SPP_PAGE_BITMAP::lru_operate(std::vector<PAGE_R> &l, std::size_t i, ui
       break;
     } 
   }
-
-  for (size_t j = set_begin; j < set_begin + way; j++) 
-    l[j].lru_bits++;
-
-  l[i].lru_bits = 0;
 }
 
 void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
@@ -29,9 +28,7 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
 
   this_round_pg_acc[page].ct_add_non_saturate(block);
 
-  // Page already exists.
-  // Update the bitmap of that page.
-  // Update the LRU bits.
+  // 1. Check the table.
   for (size_t i = set * TABLE_WAY; i < (set + 1) * TABLE_WAY; i++) {
     if (tb[i].valid && tb[i].page_no == page) {
       lru_operate(tb, i, TABLE_WAY);
@@ -41,136 +38,60 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
     }
   }
 
-  // Page not found.
-  // Check or update filter first.
-  bool check_filter = filter_operate(addr);
-
-  if (check_filter)
+  // 2. Check the filter 
+  if (filter_operate(addr))
     return; // Filter updated.
-  
+   
+  // 3. Check the level 1 filter.
   lv1_filter_operate(addr);
 }
 
-void spp::SPP_PAGE_BITMAP::promote_from_filter_to_tb(uint64_t addr) {
-  uint64_t set = calc_set(addr);
+void spp::SPP_PAGE_BITMAP::promote_filter(uint64_t addr, std::vector<PAGE_R> &lf, std::vector<PAGE_R> &hf) {
   uint64_t page = addr >> 12;
   uint64_t block = (addr & 0xFFF) >> 6;
+  std::vector<uint64_t> l_blks = {block};
+  uint64_t l_index = 0;
 
-  // Allocate new entry for the new page with more than threshold number of blocks.
-  std::vector<uint64_t> filter_blks = {block};
-  uint64_t filter_index = 0;
-
-  for (size_t i = set * FILTER_WAY; i < (set + 1) * FILTER_WAY; i++) {
-    if (filter[i].valid && filter[i].page_no == page) {
+  // Get block from the lower level filter.
+  for (size_t i = 0; i < lf.size(); i++) {
+    if (lf[i].valid && lf[i].page_no == page) {
       for(size_t j = 0; j < BITMAP_SIZE; j++) {
-        if (filter[i].bitmap[j]) 
-          filter_blks.push_back(j);
+        if (lf[i].bitmap[j]) 
+          l_blks.push_back(j);
       }
 
-      filter[i].rst();
-      filter_index = i;
+      lf[i].rst();
+      l_index = i;
       break;
     } 
   }
 
-  // Find an invalid entry for the page.
-  for (size_t i = set * TABLE_WAY; i < (set + 1) * TABLE_WAY; i++) {
-    if (!tb[i].valid) {
-      tb[i].rst();
-      tb[i].valid = true;
-      tb[i].page_no = page;
-
-      for(auto var : filter_blks) 
-        tb[i].ct_add(var);
-
-      lru_operate(tb, i, TABLE_WAY);
+  // Find an invalid entry in the upper filter.
+  for (size_t i = 0; i < hf.size(); i++) {
+    if (!hf[i].valid) {
+      hf[i].populate_entry(page, l_blks);
+      lru_operate(hf, i, hf.size());
 
       return;
     }
   }
 
-  // All pages valid.
-  // Find LRU page.
-  auto lru_el = std::max_element(tb.begin() + set * TABLE_WAY, tb.begin() + (set + 1) * TABLE_WAY,
-                [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
-
-  PAGE_R tmpp = *lru_el;
-  /*
-  filter[filter_index] = tmpp;
-  filter[filter_index].valid = true;
-  filter[filter_index].lru_bits = 0;
-  */
-  filter[filter_index].rst();
-  lru_el->rst();
-  lru_el->valid = true;
-  lru_el->page_no = page;
-
-  for(auto var : filter_blks) 
-    lru_el->ct_add(var);
-
-  lru_operate(tb, lru_el - tb.begin(), TABLE_WAY);
-}
-
-void spp::SPP_PAGE_BITMAP::promote_from_lv1_filter_to_filter(uint64_t addr) {
-  uint64_t set = calc_set(addr);
-  uint64_t page = addr >> 12;
-  uint64_t block = (addr & 0xFFF) >> 6;
-
-  // Allocate new entry for the new page with more than threshold number of blocks.
-  std::vector<uint64_t> lv1_filter_blks = {block};
-  uint64_t lv1_filter_index = 0;
-
-  for (size_t i = set * LV1_FILTER_WAY; i < (set + 1) * LV1_FILTER_WAY; i++) {
-    if (lv1_filter[i].valid && lv1_filter[i].page_no == page) {
-      for(size_t j = 0; j < BITMAP_SIZE; j++) {
-        if (lv1_filter[i].bitmap[j]) 
-          lv1_filter_blks.push_back(j);
-      }
-
-      lv1_filter[i].rst();
-      lv1_filter_index = i;
-      break;
-    } 
-  }
-
-  // Find an invalid entry in the filter.
-  for (size_t i = set * FILTER_WAY; i < (set + 1) * FILTER_WAY; i++) {
-    if (!filter[i].valid) {
-      filter[i].rst();
-      filter[i].valid = true;
-      filter[i].page_no = page;
-
-      for(auto var : lv1_filter_blks) 
-        filter[i].bitmap[var] = true;
-
-      lru_operate(filter, i, FILTER_WAY);
-
-      return;
-    }
-  }
-
-  // All filter entries valid.
+  // All entries in the upper filter valid.
   // Find LRU entry.
-  auto lru_el = std::max_element(filter.begin() + set * FILTER_WAY, filter.begin() + (set + 1) * FILTER_WAY,
+  // Only promotion, no demotion.
+  auto lru_el = std::max_element(hf.begin(), hf.begin() + hf.size(),
                 [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
 
-  PAGE_R tmpp = *lru_el;
-  lv1_filter[lv1_filter_index].valid = false;
-  lv1_filter[lv1_filter_index].lru_bits = 0;
-  lru_el->rst();
-  lru_el->page_no = page;
-
-  for(auto var : lv1_filter_blks) 
-    lru_el->ct_add(var);
-
-  lru_operate(filter, lru_el - filter.begin(), FILTER_WAY);
+  lf[l_index].rst();
+  lru_el->populate_entry(page, l_blks);
+  lru_operate(hf, lru_el - hf.begin(), hf.size());
 }
 
 void spp::SPP_PAGE_BITMAP::evict(uint64_t addr) {
   uint64_t page = addr >> 12;
   uint64_t block = (addr & 0xFFF) >> 6;
 
-  // Check tb first.
+  // Check the table.
   /*
   for (size_t i = 0; i < TABLE_SIZE; i++) {
     if (tb[i].page_no == page &&
@@ -179,10 +100,9 @@ void spp::SPP_PAGE_BITMAP::evict(uint64_t addr) {
   }
   */
 
-  // Check filter.
+  // Check the filter.
   for (size_t i = 0; i < FILTER_SIZE; i++) {
-    if (filter[i].page_no == page &&
-        filter[i].valid) 
+    if (filter[i].page_no == page && filter[i].valid) 
       filter[i].bitmap[block] = false;
   }
 }
@@ -203,27 +123,13 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
         if (tb[i].bitmap[j]) {
           bool pf_check_row = tb[i].row_access[j / 8] < (tb[i].acc_counter >> 3);
           bool pf_check_col = tb[i].col_access[j % 8] < (tb[i].acc_counter >> 3);
-
-          // Accumulate the number of blocks accessed in the row.
-          uint64_t row_blk = 0;
+          uint64_t row_blk = 0, col_blk = 0;
 
           for (size_t k = (j - j % 8); k < ((j - j % 8) + 8); k++) 
             row_blk += tb[i].bitmap[k]; 
 
-          // Accumulate the number of blocks accesses in the column.
-          uint64_t col_blk = 0;
-
           for (size_t k = j % 8; k < 64; k += 8) 
-              col_blk += tb[i].bitmap[k]; 
-
-          if (tb[i].row_access[j / 8] > 0) 
-            assert(row_blk > 0); 
-
-          if (tb[i].col_access[j % 8] > 0) 
-            assert(col_blk > 0);
-
-          assert(row_blk <= tb[i].row_access[j / 8]);
-          assert(col_blk <= tb[i].col_access[j % 8]);
+            col_blk += tb[i].bitmap[k]; 
 
           if (!((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])))
             cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
@@ -248,14 +154,18 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
     } 
   }
 
-  std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches from past accesses." << std::endl;
-  std::cout << "Filter prefetches: " << filter_sum << std::endl;
+  std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches. " << filter_sum << " are from the filter." << std::endl;
 
   uint64_t valid_tb_entry = 0;
 
-  for(auto var : tb) {
+  for(auto &var : tb) {
     if (var.valid) 
       valid_tb_entry++; 
+
+    var.accessed++;
+
+    if (var.accessed > 2) 
+      var.rst(); 
   }
 
   pf_metadata_limit = (valid_tb_entry * 100 + 1024 * 42) / 8; 
@@ -290,7 +200,7 @@ void spp::SPP_PAGE_BITMAP::lv1_filter_operate(uint64_t addr) {
       uint64_t accu = std::accumulate(lv1_filter[i].bitmap, lv1_filter[i].bitmap + BITMAP_SIZE, 0);
 
       if (accu > 2) 
-        promote_from_lv1_filter_to_filter(addr); 
+        promote_filter(addr, lv1_filter, filter);
 
       return;
     } 
@@ -300,12 +210,8 @@ void spp::SPP_PAGE_BITMAP::lv1_filter_operate(uint64_t addr) {
   // If any invalid entry exists.
   for (size_t i = set * LV1_FILTER_WAY; i < (set + 1) * LV1_FILTER_WAY; i++) {
     if (!lv1_filter[i].valid) {
-      lv1_filter[i].rst();
-      lv1_filter[i].valid = true;
-      lv1_filter[i].page_no = page;
-      lv1_filter[i].bitmap[block] = true;
+      lv1_filter[i].populate_entry(page, {block});
       lru_operate(lv1_filter, i, LV1_FILTER_WAY);
-      //std::cout << "Allocated in lv1 filter i = " << i << std::endl;
 
       return;
     } 
@@ -315,12 +221,8 @@ void spp::SPP_PAGE_BITMAP::lv1_filter_operate(uint64_t addr) {
   auto lru_el = std::max_element(lv1_filter.begin() + set * LV1_FILTER_WAY, lv1_filter.begin() + (set + 1) * LV1_FILTER_WAY,
                 [](const auto& l, const auto& r) { return l.lru_bits < r.lru_bits; }); 
 
-  lru_el->rst();
-  lru_el->page_no = page;
-  lru_el->valid = true;
-  lru_el->bitmap[block] = true;
+  lru_el->populate_entry(page, {block});
   lru_operate(lv1_filter, lru_el - lv1_filter.begin(), LV1_FILTER_WAY);
-  //std::cout << "replaced" << std::endl;
 
   return;
 }
@@ -331,14 +233,13 @@ bool spp::SPP_PAGE_BITMAP::filter_operate(uint64_t addr) {
   uint64_t block = (addr & 0xFFF) >> 6;
 
   for (size_t i = set * FILTER_WAY; i < (set + 1) * FILTER_WAY; i++) {
-    if (filter[i].valid &&
-        filter[i].page_no == page) {
+    if (filter[i].valid && filter[i].page_no == page) {
       filter[i].bitmap[block] = true;
       lru_operate(filter, i, FILTER_WAY);
       uint64_t accu = std::accumulate(filter[i].bitmap, filter[i].bitmap + BITMAP_SIZE, 0);
 
       if (accu > FILTER_THRESHOLD) 
-        promote_from_filter_to_tb(addr); 
+        promote_filter(addr, filter, tb);
 
       return true;
     } 
@@ -463,54 +364,44 @@ void spp::SPP_PAGE_BITMAP::compare_truth() {
   }
 }
 
-void spp::SPP_PAGE_BITMAP::adjust_filter_threshold() {
-  uint64_t max = 0;
-  uint64_t max_index = 0;
-  std::map<uint64_t, uint64_t> pk_mx;
+uint64_t spp::SPP_PAGE_BITMAP::tb_max(std::vector<PAGE_R> l) {
+  uint64_t max = 0, max_index = 0;
+  std::map<uint64_t, uint64_t> mx;
 
   // Find the table max.
   for (size_t i = 1; i <= BITMAP_SIZE; i++) 
-    pk_mx[i] = 0; 
+    mx[i] = 0; 
 
-  for(auto var : tb) {
+  for(auto var : l) {
     if (var.valid) 
-      pk_mx[std::accumulate(var.bitmap, var.bitmap + BITMAP_SIZE, 0)]++;
+      mx[std::accumulate(var.bitmap, var.bitmap + BITMAP_SIZE, 0)]++;
   }
 
   for (size_t i = 1; i <= BITMAP_SIZE; i++) {
-    if (pk_mx[i] > max) {
-      max = pk_mx[i];
+    if (mx[i] > max) {
+      max = mx[i];
       max_index = i;
     } 
   }
 
-  if (max_index > FILTER_THRESHOLD) 
-    FILTER_THRESHOLD = FILTER_THRESHOLD + (max_index - FILTER_THRESHOLD) / 2;
+  return max_index;
+
+}
+
+void spp::SPP_PAGE_BITMAP::adjust_filter_threshold() {
+  uint64_t max_from_tb = tb_max(tb);
+
+  /*
+  if (max_from_tb > FILTER_THRESHOLD) 
+    FILTER_THRESHOLD = FILTER_THRESHOLD + (max_from_tb - FILTER_THRESHOLD) / 2;
   else 
-    FILTER_THRESHOLD = max_index; //FILTER_THRESHOLD - (FILTER_THRESHOLD - max) / 2;
+    FILTER_THRESHOLD = max_from_tb; //FILTER_THRESHOLD - (FILTER_THRESHOLD - max) / 2;
+  */
 
   std::cout << "Pb: filter threshold adjusted to " << FILTER_THRESHOLD << std::endl;
 
   // Find the filter max.
-  max = 0;
-  max_index = 0;
-  std::map<uint64_t, uint64_t> ft_mx;
-
-  for (size_t i = 1; i <= BITMAP_SIZE; i++) 
-    ft_mx[i] = 0; 
-
-  for(auto var : filter) {
-    if (var.valid) 
-      ft_mx[std::accumulate(var.bitmap, var.bitmap + BITMAP_SIZE, 0)]++;
-  }
-
-  for (size_t i = 2; i <= BITMAP_SIZE; i++) {
-    if (ft_mx[i] > max) {
-      max = ft_mx[i];
-      max_index = i;
-    } 
-  }
-
-  std::cout << "Filter max: " << max_index << std::endl;
+  uint64_t max_from_ft = tb_max(filter);
+  std::cout << "Filter max: " << max_from_ft << " table max: " << max_from_tb << std::endl;
 }
 

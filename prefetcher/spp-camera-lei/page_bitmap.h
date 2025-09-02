@@ -26,6 +26,7 @@ namespace spp {
 
     struct PAGE_R {
       bool valid = false;
+      uint64_t accessed = 0;
       uint16_t lru_bits;
       uint64_t page_no;
       bool bitmap[BITMAP_SIZE] = {false};
@@ -35,6 +36,7 @@ namespace spp {
 
       void rst() {
         valid = false;
+        accessed = 0;
         lru_bits = 0;
         page_no = 0;
 
@@ -78,7 +80,17 @@ namespace spp {
         row_access[blk / 8] = row_access[blk / 8] >= 0b11111 ? 0b11111 : (row_access[blk / 8] + 1);
         col_access[blk % 8] = col_access[blk % 8] >= 0b11111 ? 0b11111 : (col_access[blk % 8] + 1);
         acc_counter = acc_counter >= 0b11111111 ? 0b11111111 : (acc_counter + 1);
+        accessed = 0;
         //ct_check(blk);
+      }
+
+      void populate_entry(uint64_t pg, std::vector<uint64_t> blks) {
+        rst();
+        valid = true;
+        page_no = pg;
+
+        for(auto var : blks) 
+          ct_add(var); 
       }
 
       void ct_add_non_saturate(uint64_t blk) {
@@ -119,8 +131,7 @@ namespace spp {
 
     void lru_operate(std::vector<PAGE_R> &l, std::size_t i, uint64_t way);
     void update(uint64_t addr);
-    void promote_from_filter_to_tb(uint64_t addr);
-    void promote_from_lv1_filter_to_filter(uint64_t addr);
+    void promote_filter(uint64_t addr, std::vector<PAGE_R> &lf, std::vector<PAGE_R> &hf);
     void evict(uint64_t addr);
     std::vector<std::pair<uint64_t, bool>> gather_pf(uint64_t asid);
     void lv1_filter_operate(uint64_t);
@@ -129,6 +140,7 @@ namespace spp {
     uint64_t calc_set(uint64_t addr);
     void print_page_access();
     void compare_truth();
+    uint64_t tb_max(std::vector<PAGE_R> l);
     void adjust_filter_threshold();
   };
 }

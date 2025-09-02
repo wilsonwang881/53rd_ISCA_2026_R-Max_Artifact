@@ -23,32 +23,24 @@ namespace stlb_pf
   {
     public:
 
-    uint64_t DQ_IP_SIZE = 1024;
     uint64_t DQ_SIZE = 1024;
-    bool hit_this_round = false;
-
     uint64_t pf_hit_last_round = 0;
     uint64_t pf_issued_last_round = 0;
     float accuracy;
     uint64_t pf_issued = 0;
     uint64_t pf_hit = 0;
-    uint64_t to_be_pf_blks = 0;
-    uint64_t filled_blks = 0;
     uint64_t hits = 0;
     uint64_t accesses = 0;
     uint64_t accesses_last_round = 0;
     uint64_t wait_interval;
     uint64_t last_issued_pf_moment;
-    uint64_t pushed_el = 0;
 
     // Context switch prefetch queue.
     std::deque<uint64_t> translations; 
-    //std::deque<uint64_t> translations_ip;
     std::deque<uint64_t> cs_q;
 
     void update(uint64_t addr);
-    void pop_pf(uint64_t addr);
-    void evict(uint64_t addr);
+    void pop_queue(uint64_t addr, std::deque<uint64_t> &q);
     void gather_pf();
     void issue(CACHE* cache);
     void update_pf_stats();

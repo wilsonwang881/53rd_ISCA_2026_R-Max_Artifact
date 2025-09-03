@@ -28,7 +28,7 @@ experiment_batch_run() {
 	    #./create_and_attach_named_pipe.sh
 	    cp "$champsim_reset_ins_data_dir"/"${workloadRelativeArray[$i]}"/log.txt log_baseline.txt;
 	    cp "$champsim_reset_ins_data_dir"/"${workloadRelativeArray[$i]}"/reset_ins_number.txt .;
-	    job_cmd="cd $PWD && $champsim_bin_path --warmup_instructions 0 --simulation_instructions 2000000000 ${workloadAbsoluteArray[$i]} > log.txt"
+	    job_cmd="cd $PWD && $champsim_bin_path --warmup_instructions 0 --simulation_instructions 300000000 ${workloadAbsoluteArray[$i]} > log.txt"
 	    cmdArray+=("$job_cmd");
 	    cd ../;
 	done

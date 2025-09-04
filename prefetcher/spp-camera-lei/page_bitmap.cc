@@ -2,13 +2,12 @@
 
 void spp::SPP_PAGE_BITMAP::lru_operate(std::vector<PAGE_R> &l, std::size_t i, uint64_t way) {
   uint64_t set_begin = i - (i % way);
-  l[i].lru_bits = 0;
 
   for (size_t j = set_begin; j < set_begin + way; j++) 
     l[j].lru_bits++;
 
   for (size_t j = set_begin; j < set_begin + way; j++) {
-    if (l[j].lru_bits >= 0x7FF) {
+    if (l[j].lru_bits >= 0x3FF) {
       for (size_t k = set_begin; k < set_begin + way; k++) {
         if (l[k].lru_bits > 2) 
           l[k].lru_bits = l[k].lru_bits - 2; 
@@ -19,6 +18,8 @@ void spp::SPP_PAGE_BITMAP::lru_operate(std::vector<PAGE_R> &l, std::size_t i, ui
       break;
     } 
   }
+
+  l[i].lru_bits = 0;
 }
 
 void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
@@ -121,6 +122,9 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
       
       for (size_t j = 0; j < BITMAP_SIZE; j++) {
         if (tb[i].bitmap[j]) {
+          cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
+
+          /*
           bool pf_check_row = tb[i].row_access[j / 8] < (tb[i].acc_counter >> 3);
           bool pf_check_col = tb[i].col_access[j % 8] < (tb[i].acc_counter >> 3);
           uint64_t row_blk = 0, col_blk = 0;
@@ -133,6 +137,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
 
           if (!((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])))
             cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
+          */
         }
       }
     }

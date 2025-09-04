@@ -15,7 +15,7 @@
 namespace spp {
   class SPP_PAGE_BITMAP {
     constexpr static uint64_t TABLE_SET = 1;
-    constexpr static uint64_t LV1_FILTER_WAY = 1024;
+    constexpr static uint64_t LV1_FILTER_WAY = 512;
     constexpr static uint64_t LV1_FILTER_SIZE = TABLE_SET * LV1_FILTER_WAY;
     constexpr static uint64_t FILTER_WAY = 512;
     constexpr static std::size_t FILTER_SIZE = TABLE_SET * FILTER_WAY;

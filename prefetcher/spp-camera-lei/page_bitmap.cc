@@ -114,72 +114,84 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   uint64_t filter_sum = 0;
   compare_truth();
   //adjust_filter_threshold();
-  this_round_pg_acc.clear();
 
-  for (size_t i = 0; i < TABLE_SIZE; i++) {
-    if (tb[i].valid) {
-      uint64_t page_addr = tb[i].page_no << 12;
-      
-      for (size_t j = 0; j < BITMAP_SIZE; j++) {
-        if (tb[i].bitmap[j]) {
-          cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
-
-          /*
-          bool pf_check_row = tb[i].row_access[j / 8] < (tb[i].acc_counter >> 3);
-          bool pf_check_col = tb[i].col_access[j % 8] < (tb[i].acc_counter >> 3);
-          uint64_t row_blk = 0, col_blk = 0;
-
-          for (size_t k = (j - j % 8); k < ((j - j % 8) + 8); k++) 
-            row_blk += tb[i].bitmap[k]; 
-
-          for (size_t k = j % 8; k < 64; k += 8) 
-            col_blk += tb[i].bitmap[k]; 
-
-          if (!((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])))
+  if (STORAGE_LIMIT_MODE) {
+    for (size_t i = 0; i < TABLE_SIZE; i++) {
+      if (tb[i].valid) {
+        uint64_t page_addr = tb[i].page_no << 12;
+        
+        for (size_t j = 0; j < BITMAP_SIZE; j++) {
+          if (tb[i].bitmap[j]) {
             cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
-          */
+
+            /*
+            bool pf_check_row = tb[i].row_access[j / 8] < (tb[i].acc_counter >> 3);
+            bool pf_check_col = tb[i].col_access[j % 8] < (tb[i].acc_counter >> 3);
+            uint64_t row_blk = 0, col_blk = 0;
+
+            for (size_t k = (j - j % 8); k < ((j - j % 8) + 8); k++) 
+              row_blk += tb[i].bitmap[k]; 
+
+            for (size_t k = j % 8; k < 64; k += 8) 
+              col_blk += tb[i].bitmap[k]; 
+
+            if (!((pf_check_row && pf_check_col) || (row_blk == tb[i].row_access[j / 8] || col_blk == tb[i].col_access[j % 8])))
+              cs_pf.push_back(std::make_pair(page_addr + (j << 6), true)); 
+            */
+          }
         }
       }
     }
-  }
 
-  for (size_t i = 0; i < FILTER_SIZE; i++) {
-    if (filter[i].valid) {
-      uint64_t page_addr = filter[i].page_no << 12;
-      uint64_t blocks = std::reduce(std::begin(filter[i].bitmap), std::end(filter[i].bitmap), 0);
-      
-      if (blocks >= 2) {
-        for (size_t j = 0; j < BITMAP_SIZE; j++) {
-          if (filter[i].bitmap[j]) {
-            cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
-            filter_sum++;
-          }
-        } 
-      }
+    for (size_t i = 0; i < FILTER_SIZE; i++) {
+      if (filter[i].valid) {
+        uint64_t page_addr = filter[i].page_no << 12;
+        uint64_t blocks = std::reduce(std::begin(filter[i].bitmap), std::end(filter[i].bitmap), 0);
+        
+        if (blocks >= 2) {
+          for (size_t j = 0; j < BITMAP_SIZE; j++) {
+            if (filter[i].bitmap[j]) {
+              cs_pf.push_back(std::make_pair(page_addr + (j << 6), true));
+              filter_sum++;
+            }
+          } 
+        }
+      } 
+    }
+
+    std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches. " << filter_sum << " are from the filter." << std::endl;
+
+    uint64_t valid_tb_entry = 0;
+
+    for(auto &var : tb) {
+      if (var.valid) 
+        valid_tb_entry++; 
+
+      var.accessed++;
+
+      if (var.accessed > 2) 
+        var.rst(); 
+    }
+
+    pf_metadata_limit = (valid_tb_entry * 100 + 1024 * 42) / 8; 
+    uint64_t remainder = pf_metadata_limit % 64;
+
+    if (remainder != 0) 
+      pf_metadata_limit = pf_metadata_limit + (64 - remainder);
+
+    std::cout << "Pb: pf_metadata_limit " << pf_metadata_limit << " bytes " << 1.0 * pf_metadata_limit / 1024 << " KB."<< std::endl;
+  }
+  else {
+    for(auto var : this_round_pg_acc) {
+      for(size_t i = 0; i < BITMAP_SIZE; i++) {
+        if (var.second.bitmap[i]) 
+          cs_pf.push_back(std::make_pair((var.first << 12 )+ (i << 6), true));
+      } 
     } 
+
+    pf_metadata_limit = 1024 * 42 / 8;
+    std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches from unlimited storage from " << this_round_pg_acc.size() << " pages." << std::endl;
   }
-
-  std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches. " << filter_sum << " are from the filter." << std::endl;
-
-  uint64_t valid_tb_entry = 0;
-
-  for(auto &var : tb) {
-    if (var.valid) 
-      valid_tb_entry++; 
-
-    var.accessed++;
-
-    if (var.accessed > 2) 
-      var.rst(); 
-  }
-
-  pf_metadata_limit = (valid_tb_entry * 100 + 1024 * 42) / 8; 
-  uint64_t remainder = pf_metadata_limit % 64;
-
-  if (remainder != 0) 
-    pf_metadata_limit = pf_metadata_limit + (64 - remainder);
-
-  std::cout << "Pb: pf_metadata_limit " << pf_metadata_limit << " bytes " << 1.0 * pf_metadata_limit / 1024 << " KB."<< std::endl;
 
   for(auto &lv1_e : lv1_filter) 
     lv1_e.rst(); 
@@ -189,6 +201,8 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
 
   for(auto var : cs_pf)
     pf.push_back(var); 
+
+  this_round_pg_acc.clear();
 
   return pf;
 }

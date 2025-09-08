@@ -23,6 +23,7 @@ namespace spp {
     constexpr static std::size_t TABLE_SIZE = TABLE_SET * TABLE_WAY;
     constexpr static std::size_t BITMAP_SIZE = 64;
     std::size_t FILTER_THRESHOLD = 10;
+    constexpr static bool STORAGE_LIMIT_MODE = false;
 
     struct PAGE_R {
       bool valid = false;

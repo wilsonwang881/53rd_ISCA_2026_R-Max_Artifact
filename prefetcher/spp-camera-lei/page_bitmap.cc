@@ -27,7 +27,7 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
   uint64_t page = addr >> 12;
   uint64_t block = (addr & 0xFFF) >> 6;
 
-  this_round_pg_acc[page].ct_add_non_saturate(block);
+  //this_round_pg_acc[page].ct_add_non_saturate(block);
 
   // 1. Check the table.
   for (size_t i = set * TABLE_WAY; i < (set + 1) * TABLE_WAY; i++) {
@@ -112,7 +112,7 @@ std::vector<std::pair<uint64_t, bool>> spp::SPP_PAGE_BITMAP::gather_pf(uint64_t 
   cs_pf.clear();
   std::vector<std::pair<uint64_t, bool>> pf;
   uint64_t filter_sum = 0;
-  compare_truth();
+  //compare_truth();
   //adjust_filter_threshold();
 
   if (STORAGE_LIMIT_MODE) {

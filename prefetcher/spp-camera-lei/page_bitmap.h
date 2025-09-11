@@ -11,6 +11,9 @@
 #include <math.h>
 #include "champsim_constants.h"
 #include <cassert>
+#include "champsim_constants.h"
+#include <tuple>//HL
+#include <unordered_set>//HL
 
 namespace spp {
   class SPP_PAGE_BITMAP {
@@ -24,16 +27,36 @@ namespace spp {
     constexpr static std::size_t BITMAP_SIZE = 64;
     std::size_t FILTER_THRESHOLD = 10;
     constexpr static bool STORAGE_LIMIT_MODE = true;
+    constexpr static int CAPACITY = 7;
+    constexpr static int COUNT_MAX = 3;
+    uint64_t previous_page = 0;//HL
+    uint64_t current_page = 0;//HL
 
     struct PAGE_R {
       bool valid = false;
       uint64_t accessed = 0;
       uint16_t lru_bits;
       uint64_t page_no;
-      bool bitmap[BITMAP_SIZE] = {false};
+      int bitmap[BITMAP_SIZE] = {0};
       uint64_t col_access[BITMAP_SIZE / 8] = {0};
+      uint8_t row_counter[BITMAP_SIZE / 8] = {0};
       uint64_t row_access[BITMAP_SIZE / 8] = {0};
       uint64_t acc_counter = 0;
+      bool saturated_bit;//HL
+      int8_t block_indicate[BITMAP_SIZE]={0}; //HL
+      int group_access=0; //HL
+      bool first_access; //HL
+      std::deque<int8_t>group_queue;//HL
+      std::unordered_set<int>group_set;//HL
+      std::array<int8_t, BITMAP_SIZE> tot_hit;//HL
+      uint64_t total_access;
+      uint64_t row_number[BITMAP_SIZE / 8];//HL
+      uint64_t column_number[BITMAP_SIZE / 8];//HL
+      float fraction_row_total[BITMAP_SIZE / 8];//HL
+      float fraction_row_block[BITMAP_SIZE / 8];//HL
+      float fraction_column_total[BITMAP_SIZE / 8];//HL
+      float fraction_column_block[BITMAP_SIZE / 8];//HL
+      std::array<bool, BITMAP_SIZE> block;
 
       void rst() {
         valid = false;
@@ -42,7 +65,7 @@ namespace spp {
         page_no = 0;
 
         for (size_t i = 0; i < BITMAP_SIZE; i++)
-          bitmap[i] = false;
+          bitmap[i] = 0;
 
         for (size_t i = 0; i < BITMAP_SIZE / 8; i++) {
           col_access[i] = 0;
@@ -77,11 +100,13 @@ namespace spp {
       }
 
       void ct_add(uint64_t blk) {
-        bitmap[blk] = true;
+        bitmap[blk] = 1;
+        block_indicate[blk] = group_access;
         row_access[blk / 8] = row_access[blk / 8] >= 0b11111 ? 0b11111 : (row_access[blk / 8] + 1);
         col_access[blk % 8] = col_access[blk % 8] >= 0b11111 ? 0b11111 : (col_access[blk % 8] + 1);
         acc_counter = acc_counter >= 0b11111111 ? 0b11111111 : (acc_counter + 1);
         accessed = 0;
+        total_access++;
         //ct_check(blk);
       }
 
@@ -89,6 +114,9 @@ namespace spp {
         rst();
         valid = true;
         page_no = pg;
+        first_access = true;
+        group_access = 1;
+        acc_counter = blks.size();
 
         for(auto var : blks) 
           ct_add(var); 
@@ -125,7 +153,7 @@ namespace spp {
     std::vector<PAGE_R> filter = std::vector<PAGE_R>(FILTER_SIZE);
     std::vector<PAGE_R> tb = std::vector<PAGE_R>(TABLE_SIZE);
 
-    std::deque<std::pair<uint64_t, bool>> cs_pf;
+    std::deque<std::tuple<uint64_t, bool,int8_t>> cs_pf;
     std::set<uint64_t> issued_cs_pf;
     uint64_t issued_cs_pf_hit;
     uint64_t total_issued_cs_pf;
@@ -134,8 +162,8 @@ namespace spp {
     void update(uint64_t addr);
     void promote_filter(uint64_t addr, std::vector<PAGE_R> &lf, std::vector<PAGE_R> &hf);
     void evict(uint64_t addr);
-    std::vector<std::pair<uint64_t, bool>> gather_pf(uint64_t asid);
     void lv1_filter_operate(uint64_t);
+    std::vector<std::tuple<uint64_t, bool, int8_t>> gather_pf(uint64_t asid);
     bool filter_operate(uint64_t addr);
     void update_usefulness(uint64_t addr);
     uint64_t calc_set(uint64_t addr);

@@ -49,7 +49,8 @@ void spp::prefetcher::issue(CACHE* cache)
 
     //if (q_occupancy[2] <= 16) {
 
-      auto [addr, priority] = context_switch_issue_queue.front();
+      auto [addr, priority,group] = context_switch_issue_queue.front();//HL
+      //auto [addr, priority] = context_switch_issue_queue.front();//WL
       bool prefetched = cache->prefetch_line(addr, priority, 0);
 
       issue_queue.clear();
@@ -244,7 +245,7 @@ void spp::prefetcher::clear_states()
 // WL
 void spp::prefetcher::context_switch_gather_prefetches(CACHE* cache)
 {
-  std::vector<std::pair<uint64_t, bool>> tmpp_pf;
+  std::vector<std::tuple<uint64_t, bool,int8_t>> tmpp_pf;
 
   issue_queue.clear();
   filter.clear();
@@ -283,8 +284,8 @@ void spp::prefetcher::context_switch_gather_prefetches(CACHE* cache)
       if (found_in_return_data) {
         uint64_t current_prefetch_address = (el_last_accessed_page_num << LOG2_PAGE_SIZE) + (el_last_offset << LOG2_BLOCK_SIZE);
 
-        context_switch_issue_queue.push_back({current_prefetch_address, true}); 
-
+        //context_switch_issue_queue.push_back({current_prefetch_address, true}); 
+        context_switch_issue_queue.push_back({current_prefetch_address, true,0});//HL 
         // Use the signature and offset to index into the pattern table.
         unsigned int c_delta, c_sig;
         auto pt_query_res = pattern_table.query_pt(el_sig, c_delta, c_sig);
@@ -299,7 +300,7 @@ void spp::prefetcher::context_switch_gather_prefetches(CACHE* cache)
           if ((prefetch_address >= (el_last_accessed_page_num << LOG2_PAGE_SIZE)) && 
               (prefetch_address <= (el_last_accessed_page_num + 1) << LOG2_PAGE_SIZE)) {
 
-            context_switch_issue_queue.push_back({(el_last_accessed_page_num << LOG2_PAGE_SIZE) + ((el_last_offset + pt_query_res.value()) << LOG2_BLOCK_SIZE), true});
+            context_switch_issue_queue.push_back({(el_last_accessed_page_num << LOG2_PAGE_SIZE) + ((el_last_offset + pt_query_res.value()) << LOG2_BLOCK_SIZE), true,0});
 
             // Second level lookahead prefetching.
             // If the confidence is larger than 50%.
@@ -319,8 +320,8 @@ void spp::prefetcher::context_switch_gather_prefetches(CACHE* cache)
   }
 
   // Remove duplicate prefetches.
-  std::set<std::pair<uint64_t, bool>> tmpp_set;
-  std::vector<std::pair<uint64_t, bool>> tmpp_issue_queue;
+  std::set<std::tuple<uint64_t, bool,int8_t>> tmpp_set;
+  std::vector<std::tuple<uint64_t, bool,int8_t>> tmpp_issue_queue;
 
   for(auto var : context_switch_issue_queue) {
 
@@ -359,7 +360,8 @@ std::optional<uint64_t> spp::prefetcher::context_switch_aux(uint32_t &sig, int32
         (prefetch_address <= (page_num + 1) << LOG2_PAGE_SIZE) &&
         confidence >= CUTOFF_THRESHOLD) {
 
-      context_switch_issue_queue.push_back({prefetch_address, true});
+      //context_switch_issue_queue.push_back({prefetch_address, true});
+      context_switch_issue_queue.push_back({prefetch_address, true,0});//HL
       last_offset += tmpp_pt_query_res.value();
       return tmpp_pt_query_res.value();
     }

@@ -52,8 +52,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
 
   if (access_type{type} == access_type::LOAD) {
     uint64_t page_addr = base_addr >> 12;
-    std::tuple<uint64_t, bool,int8_t>demand_itself = std::make_tuple(((base_addr >> 6) << 6), true,0);
-    pref.available_prefetches.erase(demand_itself);//HL
+    std::tuple<uint64_t, bool,int8_t>demand_itself = std::make_tuple(((base_addr >> 6) << 6), true, 0);
+    pref.available_prefetches.erase(demand_itself);
     int8_t group = 0;
 
     //find the matching adr in the avaialble prefetches
@@ -66,7 +66,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
       if ((std::get<0>(var) >> 12) == page_addr) {
         if(std::get<2>(var)==group && group!=0)
           pref.context_switch_issue_queue.push_back(var);
-        else if((base_addr>>10)==((std::get<0>(var))>>10))
+        else if((base_addr>>9)==((std::get<0>(var))>>9))
           pref.context_switch_issue_queue.push_back(var);
       }
     }
@@ -80,14 +80,15 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
 
 uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) {
   auto &pref = ::SPP[{this, cpu}];
-  uint32_t blk_asid_match = (metadata_in >> 2) & 0x1;
+  //uint32_t blk_asid_match = (metadata_in >> 2) & 0x1;
 
   if (addr != 0 && addr >= 13 * 1024 && !prefetch) 
     pref.page_bitmap.update(addr);
 
-  //retain by HL
+  /*
   if (blk_asid_match)
     pref.page_bitmap.evict(evicted_addr);
+  */
   
   return metadata_in;
 }
@@ -119,17 +120,6 @@ void CACHE::prefetcher_cycle_operate() {
         std::cout << "Pb has requested " << 1.0 * pref.page_bitmap.pf_metadata_limit/1024 << " KB of metadata to L2." << std::endl; 
     }
 
-    if (pref.page_bitmap.pf_metadata < pref.page_bitmap.pf_metadata_limit) {
-      uint64_t pf_addr = 0xffffff5500 + pref.page_bitmap.pf_metadata;
-      bool prefetched = this->prefetch_line(pf_addr, true, 0); 
-
-      if (prefetched) 
-        pref.page_bitmap.pf_metadata += 64; 
-
-      if (pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) 
-        std::cout << "Page bitmap has requested " << pref.page_bitmap.pf_metadata_limit << " bytes of metadata to L2." << std::endl; 
-    }
-   
     if (!champsim::operable::have_cleared_BTB
         && !champsim::operable::have_cleared_BP
         && !champsim::operable::have_cleared_prefetcher

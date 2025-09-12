@@ -57,10 +57,8 @@ namespace spp {
 
     public:
 
-    //std::set<std::pair<uint64_t, bool>> available_prefetches;
-    std::set<std::tuple<uint64_t, bool,int8_t>> available_prefetches;//HL
-    //std::deque<std::pair<uint64_t, bool>> context_switch_issue_queue; // WL
-    std::deque<std::tuple<uint64_t, bool,int8_t>> context_switch_issue_queue; //HL
+    std::set<std::tuple<uint64_t, bool, int8_t>> available_prefetches;    
+    std::deque<std::tuple<uint64_t, bool, int8_t>> context_switch_issue_queue;
     SPP_PAGE_BITMAP page_bitmap; // WL
 
     bool warmup = true;

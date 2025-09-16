@@ -76,6 +76,21 @@ void spp::prefetcher::issue(CACHE* cache)
     if (prefetched) {
       filter.update_issue(addr, cache->get_set(addr));
       issue_queue.pop_front();
+
+      auto el = std::find_if(context_switch_issue_queue.begin(), context_switch_issue_queue.end(), 
+                [match = addr >> cache->OFFSET_BITS, shamt = cache->OFFSET_BITS](const auto& entry) {
+                  return (std::get<0>(entry) >> shamt) == match; 
+                });
+
+      if (el != context_switch_issue_queue.end()) 
+        context_switch_issue_queue.erase(el); 
+
+      auto el_1 = std::find_if(available_prefetches.begin(), available_prefetches.end(), [addr](const auto& elem) {
+                    auto& [first, second, third] = elem;
+                    return first == addr; });
+
+      if (el_1 != available_prefetches.end()) 
+        available_prefetches.erase(el_1); 
     }
   }
 }

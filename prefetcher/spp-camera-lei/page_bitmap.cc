@@ -37,11 +37,15 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
     if (tb[i].valid && tb[i].page_no == page) {
       lru_operate(tb, i, TABLE_WAY);
 
-      if (page != previous_page) 
+      if (page != previous_page && tb[i].remaining_this_group <= 0) {
         tb[i].group_access++;
+        tb[i].remaining_this_group = 20;
+      } 
 
-      if(tb[i].group_access <= CAPACITY)
+      if(tb[i].group_access <= CAPACITY) {
         tb[i].block_indicate[block] = tb[i].group_access;
+        tb[i].remaining_this_group--;
+      }
       else if(tb[i].group_access > CAPACITY) {
 
         // Compact pairs of groups.
@@ -56,6 +60,7 @@ void spp::SPP_PAGE_BITMAP::update(uint64_t addr) {
         }
 
         tb[i].group_access = CAPACITY;
+        tb[i].remaining_this_group = 20;
       }
 
       tb[i].ct_add(block);
@@ -145,16 +150,16 @@ std::vector<std::tuple<uint64_t, bool, int8_t>> spp::SPP_PAGE_BITMAP::gather_pf(
     for (size_t i = 0; i < TABLE_SIZE; i++) {
       if (tb[i].valid) {
         uint64_t page_addr = tb[i].page_no << 12;
-        std::cout << "Page: " << page_addr << ": ";
+        //std::cout << "Page: " << page_addr << ": ";
 
         for (size_t j = 0; j < BITMAP_SIZE; j++) {
           if (tb[i].bitmap[j]) {
             cs_pf.push_back(std::make_tuple(page_addr + (j << 6), true, tb[i].block_indicate[j]));
-            std::cout << (unsigned)tb[i].block_indicate[j] << " ";
+            //std::cout << (unsigned)tb[i].block_indicate[j] << " ";
           }
         }
 
-        std::cout << std::endl;
+        //std::cout << std::endl;
       }
     }
 
@@ -188,7 +193,7 @@ std::vector<std::tuple<uint64_t, bool, int8_t>> spp::SPP_PAGE_BITMAP::gather_pf(
         var.rst(); 
     }
 
-    pf_metadata_limit = (valid_tb_entry * (36 + 64 * 3)+ 1024 * 36) / 8; 
+    pf_metadata_limit = (valid_tb_entry * (36 + 64 * 2)+ 1024 * 36) / 8; 
     uint64_t remainder = pf_metadata_limit % 64;
 
     if (remainder != 0) 

@@ -25,7 +25,7 @@ namespace spp {
     constexpr static std::size_t BITMAP_SIZE = 64;
     std::size_t FILTER_THRESHOLD = 10;
     constexpr static bool STORAGE_LIMIT_MODE = true;
-    constexpr static int CAPACITY = 7;
+    constexpr static int CAPACITY = 3;
     uint64_t previous_page = 0;//HL
     uint64_t current_page = 0;//HL
 
@@ -49,6 +49,7 @@ namespace spp {
       int group_access=0; //HL
       std::array<int8_t, BITMAP_SIZE> tot_hit;//HL
       uint64_t total_access;
+      int remaining_this_group = 20;
 
       void rst() {
         valid = false;
@@ -56,6 +57,7 @@ namespace spp {
         lru_bits = 0;
         page_no = 0;
         group_access = 1;
+        remaining_this_group = 20;
 
         for (size_t i = 0; i < BITMAP_SIZE; i++) {
           bitmap[i] = 0;

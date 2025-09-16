@@ -64,7 +64,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
     
     for(auto var : pref.available_prefetches) {
       if ((std::get<0>(var) >> 12) == page_addr) {
-        if(std::get<2>(var)==group && group!=0)
+        if(std::get<2>(var) == group && group != 0)
           pref.context_switch_issue_queue.push_back(var);
         else if((base_addr>>9)==((std::get<0>(var))>>9))
           pref.context_switch_issue_queue.push_back(var);

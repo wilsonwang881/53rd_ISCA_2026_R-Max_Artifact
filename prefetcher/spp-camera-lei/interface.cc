@@ -51,13 +51,13 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
     pref.page_bitmap.update_usefulness(base_addr);
 
   if (access_type{type} == access_type::LOAD) {
-    pref.curr_pg = base_addr >> 12;
-    /*
-    uint64_t page_addr = base_addr >> 12;
-    std::tuple<uint64_t, bool,int8_t>demand_itself = std::make_tuple(((base_addr >> 6) << 6), true, 0);
-    pref.available_prefetches.erase(demand_itself);
-    int8_t group = 0;
+    pref.curr_addr = (base_addr >> 6) << 6;
+    //uint64_t page_addr = base_addr >> 12;
+    //std::tuple<uint64_t, bool,int8_t>demand_itself = std::make_tuple(((base_addr >> 6) << 6), true, 0);
+    //pref.available_prefetches[curr_pg].erase(demand_itself);
+    //int8_t group = 0;
 
+    /*
     //find the matching adr in the avaialble prefetches
     for (auto var:pref.available_prefetches) {
       if(std::get<0>(var)==std::get<0>(demand_itself))

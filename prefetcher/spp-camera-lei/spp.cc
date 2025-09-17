@@ -49,27 +49,35 @@ void spp::prefetcher::issue(CACHE* cache)
 
     //if (q_occupancy[2] <= 16) {
     std::vector<uint64_t> to_remove;
+    uint64_t curr_pg = curr_addr >> 12;
 
     for(auto it = available_prefetches[curr_pg].begin(); it != available_prefetches[curr_pg].end(); ++it) {
       auto [addr, priority, group] = *it; //context_switch_issue_queue.front();
-      bool prefetched = cache->prefetch_line(addr, priority, 0);
-      issue_queue.clear();
 
-      if (prefetched) {
-        //context_switch_issue_queue.pop_front();
-        page_bitmap.issued_cs_pf.insert(addr);
-        page_bitmap.total_issued_cs_pf++;
-        issued_pf_this_round++;
-        filter.update_issue(addr, cache->get_set(addr));
-        to_remove.push_back(it - available_prefetches[curr_pg].begin());
+      //if (addr == curr_addr) 
+      //   to_remove.push_back(it - available_prefetches[curr_pg].begin());
+      //else {
+        bool prefetched = cache->prefetch_line(addr, priority, 0);
+        //issue_queue.clear();
 
-        break;
-      }
+        if (prefetched) {
+          //context_switch_issue_queue.pop_front();
+          page_bitmap.issued_cs_pf.insert(addr);
+          page_bitmap.total_issued_cs_pf++;
+          issued_pf_this_round++;
+          filter.update_issue(addr, cache->get_set(addr));
+          to_remove.push_back(it - available_prefetches[curr_pg].begin());
+
+          break;
+        }
+      //}
     }
 
     if (!to_remove.empty()) {
       for(auto var : to_remove) 
         available_prefetches[curr_pg].erase(available_prefetches[curr_pg].begin() + var); 
+
+      //return;
     }
   }
   // WL 

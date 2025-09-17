@@ -51,6 +51,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
     pref.page_bitmap.update_usefulness(base_addr);
 
   if (access_type{type} == access_type::LOAD) {
+    pref.curr_pg = base_addr >> 12;
+    /*
     uint64_t page_addr = base_addr >> 12;
     std::tuple<uint64_t, bool,int8_t>demand_itself = std::make_tuple(((base_addr >> 6) << 6), true, 0);
     pref.available_prefetches.erase(demand_itself);
@@ -66,13 +68,14 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
       if ((std::get<0>(var) >> 12) == page_addr) {
         if(std::get<2>(var) == group && group != 0)
           pref.context_switch_issue_queue.push_back(var);
-        else if((base_addr>>9)==((std::get<0>(var))>>9))
+        else if((base_addr >> 10)==((std::get<0>(var)) >> 10))
           pref.context_switch_issue_queue.push_back(var);
       }
     }
     
     for(auto var : pref.context_switch_issue_queue) 
       pref.available_prefetches.erase(var); 
+    */
   }
 
   return metadata_in;

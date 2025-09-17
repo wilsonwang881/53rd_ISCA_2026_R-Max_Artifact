@@ -42,28 +42,35 @@ namespace {
 void spp::prefetcher::issue(CACHE* cache)
 {
   // WL: issue context switch prefetches first 
-  //if (!reset_misc::dq_prefetch_communicate.empty()) {
-  if (!context_switch_issue_queue.empty()) {
+  //if (!context_switch_issue_queue.empty()) {
+  if (!available_prefetches.empty()) {
 
-    auto q_occupancy = cache->get_pq_occupancy();
+    //auto q_occupancy = cache->get_pq_occupancy();
 
     //if (q_occupancy[2] <= 16) {
+    std::vector<uint64_t> to_remove;
 
-      auto [addr, priority, group] = context_switch_issue_queue.front();
+    for(auto it = available_prefetches[curr_pg].begin(); it != available_prefetches[curr_pg].end(); ++it) {
+      auto [addr, priority, group] = *it; //context_switch_issue_queue.front();
       bool prefetched = cache->prefetch_line(addr, priority, 0);
-
       issue_queue.clear();
 
       if (prefetched) {
-        context_switch_issue_queue.pop_front();
+        //context_switch_issue_queue.pop_front();
         page_bitmap.issued_cs_pf.insert(addr);
         page_bitmap.total_issued_cs_pf++;
         issued_pf_this_round++;
         filter.update_issue(addr, cache->get_set(addr));
-      }
-    //}
+        to_remove.push_back(it - available_prefetches[curr_pg].begin());
 
-    return;
+        break;
+      }
+    }
+
+    if (!to_remove.empty()) {
+      for(auto var : to_remove) 
+        available_prefetches[curr_pg].erase(available_prefetches[curr_pg].begin() + var); 
+    }
   }
   // WL 
 
@@ -85,12 +92,12 @@ void spp::prefetcher::issue(CACHE* cache)
       if (el != context_switch_issue_queue.end()) 
         context_switch_issue_queue.erase(el); 
 
-      auto el_1 = std::find_if(available_prefetches.begin(), available_prefetches.end(), [addr](const auto& elem) {
+      auto el_1 = std::find_if(available_prefetches[addr >> 12].begin(), available_prefetches[addr >> 12].end(), [addr](const auto& elem) {
                     auto& [first, second, third] = elem;
                     return first == addr; });
 
-      if (el_1 != available_prefetches.end()) 
-        available_prefetches.erase(el_1); 
+      if (el_1 != available_prefetches[addr >> 12].end()) 
+        available_prefetches[addr >> 12].erase(el_1); 
     }
   }
 }
@@ -269,11 +276,14 @@ void spp::prefetcher::context_switch_gather_prefetches(CACHE* cache)
   context_switch_issue_queue.clear();
   available_prefetches.clear();
 
-  for (size_t i = 0; i < tmpp_pf.size(); i++) 
-    available_prefetches.insert(tmpp_pf[i]);
+  for(auto var : tmpp_pf) {
+    auto [addr, priority, group] = var;
+    available_prefetches[addr >> 12].push_back(var);
+  }
 
   return;
 
+  /*
   std::array<std::pair<uint32_t, bool>, spp::SIGNATURE_TABLE::WAY * spp::SIGNATURE_TABLE::SET> return_data = signature_table.get_sorted_signature(1.0 * filter.pf_useful / filter.pf_issued);
 
   // Walk the signature table.
@@ -322,11 +332,9 @@ void spp::prefetcher::context_switch_gather_prefetches(CACHE* cache)
               res = context_switch_aux(el_sig, _delta, confidence, el_last_accessed_page_num, _last_offset);
             }
           }
-          /*
           else {
             std::cout << "Cross page boundary place 1" << std::endl;
           }
-          */
         }
       }
     }
@@ -356,6 +364,7 @@ void spp::prefetcher::context_switch_gather_prefetches(CACHE* cache)
   gathered_pf_this_round = available_prefetches.size();
 
   std::cout << "L2C SPP Gathered " << tmpp_issue_queue.size() << " prefetches." << std::endl;
+  */
 }
 
 // WL 

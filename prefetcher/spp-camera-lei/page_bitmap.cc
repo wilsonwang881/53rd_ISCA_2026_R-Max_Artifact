@@ -193,7 +193,7 @@ std::vector<std::tuple<uint64_t, bool, int8_t>> spp::SPP_PAGE_BITMAP::gather_pf(
         var.rst(); 
     }
 
-    pf_metadata_limit = (valid_tb_entry * (36 + 64 * 2)+ 1024 * 36) / 8; 
+    pf_metadata_limit = (valid_tb_entry * (36 + 64 * 1)+ 1024 * 36) / 8; 
     uint64_t remainder = pf_metadata_limit % 64;
 
     if (remainder != 0) 

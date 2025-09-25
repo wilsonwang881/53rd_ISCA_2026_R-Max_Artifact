@@ -163,7 +163,9 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
 
       cpu_0.reset_ins_count = next_reset_moment;
 
-      champsim::operable::currently_active_thread_ID++;
+      if (SIMULATE_WITH_CACHE_RESET) 
+        champsim::operable::currently_active_thread_ID++;
+
       std::cout << "ASID incremented to " << (unsigned)champsim::operable::currently_active_thread_ID << std::endl;
       champsim::operable::reset_count++;
       //std::cout <<"Reset count is"<< reset_ins_count_readin_index <<std::endl;

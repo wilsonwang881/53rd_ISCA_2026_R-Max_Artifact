@@ -27,25 +27,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   pref.update_demand(base_addr,this->get_set_index(base_addr));
   pref.initiate_lookahead(base_addr);
 
-  if (access_type{type} != access_type::PREFETCH) {
+  if (access_type{type} != access_type::PREFETCH) 
     pref.page_bitmap.update(base_addr);
-
-    /*
-    if (cache_hit) 
-       pref.page_bitmap.update(base_addr);
-    else {
-      auto search_mshr = std::find_if(std::begin(this->MSHR), std::end(this->MSHR),
-                         [match = base_addr >> this->OFFSET_BITS, shamt = this->OFFSET_BITS]
-                         (const auto& entry) {
-                           return (entry.address >> shamt) == match; 
-                         });
-
-      if (search_mshr != this->MSHR.end() && 
-          this->get_mshr_occupancy() != this->get_mshr_size())
-        pref.page_bitmap.update(base_addr);
-    } 
-    */
-  }
 
   if (useful_prefetch) 
     pref.page_bitmap.update_usefulness(base_addr);
@@ -107,11 +90,12 @@ void CACHE::prefetcher_cycle_operate() {
   if (champsim::operable::context_switch_mode && !champsim::operable::L2C_have_issued_context_switch_prefetches) {
     // Gather prefetches via the signature and pattern tables.
     if (!pref.context_switch_prefetch_gathered) {
-      pref.context_switch_gather_prefetches(this);
+      //pref.context_switch_gather_prefetches(this);
       pref.context_switch_prefetch_gathered = true;
       champsim::operable::context_switch_data_exchange = pref.page_bitmap.pf_metadata_limit;
     }
 
+    /*
     if (pref.page_bitmap.pf_metadata < pref.page_bitmap.pf_metadata_limit) {
       uint64_t pf_addr = 64 + pref.page_bitmap.pf_metadata; //0xffffffffff5500 
       bool prefetched = this->prefetch_line(pf_addr, true, 0); 
@@ -122,14 +106,16 @@ void CACHE::prefetcher_cycle_operate() {
       if (pref.page_bitmap.pf_metadata >= pref.page_bitmap.pf_metadata_limit) 
         std::cout << "Pb has requested " << 1.0 * pref.page_bitmap.pf_metadata_limit/1024 << " KB of metadata to L2." << std::endl; 
     }
+    */
+    bool ready = (SIMULATE_WITH_BTB_RESET ? !champsim::operable::have_cleared_BTB : true) && 
+                 (SIMULATE_WITH_BRANCH_PREDICTOR_RESET ? !champsim::operable::have_cleared_BP : true) &&
+                 (SIMULATE_WITH_PREFETCHER_RESET ? !champsim::operable::have_cleared_prefetcher : true) &&
+                 (SIMULATE_WITH_CACHE_RESET ? (champsim::operable::cache_clear_counter == 7) : true) &&
+                 cpu_side_reset_ready;
 
-    if (!champsim::operable::have_cleared_BTB
-        && !champsim::operable::have_cleared_BP
-        && !champsim::operable::have_cleared_prefetcher
-        && champsim::operable::cpu_side_reset_ready
-        && champsim::operable::cache_clear_counter == 7 //) {
-        && pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit
-        && champsim::operable::Pb_metadata_loaded >= (champsim::operable::context_switch_data_exchange - 64)) {
+    if (ready) {
+        //) && pref.page_bitmap.pf_metadata == pref.page_bitmap.pf_metadata_limit) {
+        //&& champsim::operable::Pb_metadata_loaded >= (champsim::operable::context_switch_data_exchange - 64)) {
       champsim::operable::context_switch_mode = false;
       std::cout << "Pb has loaded " << 1.0 * champsim::operable::Pb_metadata_loaded/1024 << " KB of metadata to L2." << std::endl;
       champsim::operable::Pb_metadata_loaded = 0;
@@ -140,8 +126,8 @@ void CACHE::prefetcher_cycle_operate() {
       pref.context_switch_prefetch_gathered = false;
       champsim::operable::emptied_cache.clear();
       pref.page_bitmap.issued_cs_pf.clear();
-      pref.clear_states();
-      std::cout << "SPP states cleared." << std::endl;
+      //pref.clear_states();
+      std::cout << "SPP states not cleared." << std::endl;
       reset_misc::can_record_after_access = true;
       std::cout << NAME << " stalled " << current_cycle - context_switch_start_cycle << " cycle(s)" << " done at cycle " << current_cycle << std::endl;
     }
@@ -162,10 +148,10 @@ void CACHE::prefetcher_final_stats() {
 }
 
 // WL
-void CACHE::reset_spp_camera_prefetcher() {
-  std::cout << "=> Prefetcher cleared at CACHE " << NAME << " at cycle " << current_cycle << std::endl;
+void CACHE::reset_prefetcher() {
   auto &pref = ::SPP[{this, cpu}];
   pref.clear_states();
+  std::cout << "=> Prefetcher cleared at CACHE " << NAME << " at cycle " << current_cycle << std::endl;
 }
 
 // WL 

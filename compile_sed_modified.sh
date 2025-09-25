@@ -11,13 +11,14 @@ branch_predictor_setting=()
 dump_setting=()
 
 # Read the .csv file that contains the reset configurations.
-while IFS=",", read -r bin_name cache prefetcher btb branch_predictor dump
+while IFS=",", read -r bin_name cache prefetcher btb branch_predictor dib dump
 do
 	bin_names+=("$bin_name")
 	cache_setting+=("$cache")
 	prefetcher_setting+=("$prefetcher")
-	btb_setting+=("$btb")
+  btb_setting+=("$btb")
 	branch_predictor_setting+=("$branch_predictor")
+  dib_setting+=("$dib")
 	dump_setting+=("$dump")
 done <  <(tail -n +2 reset_compile_configs.csv)
 
@@ -36,6 +37,7 @@ do
  	sed -i "s/#define SIMULATE_WITH_PREFETCHER_RESET 0/#define SIMULATE_WITH_PREFETCHER_RESET ${prefetcher_setting[i]}/g" inc/operable.h
  	sed -i "s/#define SIMULATE_WITH_BTB_RESET 0/#define SIMULATE_WITH_BTB_RESET ${btb_setting[i]}/g" inc/operable.h
  	sed -i "s/#define SIMULATE_WITH_BRANCH_PREDICTOR_RESET 0/#define SIMULATE_WITH_BRANCH_PREDICTOR_RESET ${branch_predictor_setting[i]}/g" inc/operable.h
+ 	sed -i "s/#define SIMULATE_WITH_DIB_RESET 0/#define SIMULATE_WITH_DIB_RESET ${dib_setting[i]}/g" inc/operable.h
  	sed -i "s/#define DUMP_INS_NUMBER_EVERY_4M_CYCLES 1/#define DUMP_INS_NUMBER_EVERY_4M_CYCLES ${dump_setting[i]}/g" inc/champsim.h
  
  	# Threaded compile
@@ -52,6 +54,7 @@ do
  	sed -i "s/#define SIMULATE_WITH_PREFETCHER_RESET ${prefetcher_setting[i]}/#define SIMULATE_WITH_PREFETCHER_RESET 0/g" inc/operable.h
  	sed -i "s/#define SIMULATE_WITH_BTB_RESET ${btb_setting[i]}/#define SIMULATE_WITH_BTB_RESET 0/g" inc/operable.h
  	sed -i "s/#define SIMULATE_WITH_BRANCH_PREDICTOR_RESET ${branch_predictor_setting[i]}/#define SIMULATE_WITH_BRANCH_PREDICTOR_RESET 0/g" inc/operable.h
+ 	sed -i "s/#define SIMULATE_WITH_DIB_RESET ${dib_setting[i]}/#define SIMULATE_WITH_DIB_RESET 0/g" inc/operable.h
  	sed -i "s/#define DUMP_INS_NUMBER_EVERY_4M_CYCLES ${dump_setting[i]}/#define DUMP_INS_NUMBER_EVERY_4M_CYCLES 1/g" inc/champsim.h
 done
 

@@ -144,6 +144,7 @@ std::vector<std::tuple<uint64_t, bool, int8_t>> spp::SPP_PAGE_BITMAP::gather_pf(
   std::vector<std::tuple<uint64_t, bool,int8_t>> pf;
   uint64_t filter_sum = 0;
   //compare_truth();
+  //print_page_access();
   //adjust_filter_threshold();
 
   if (STORAGE_LIMIT_MODE) {    

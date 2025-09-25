@@ -88,9 +88,8 @@ namespace spp {
         if (col_blk == 0) 
           col_access[blk % 8] = 0;
 
-        if (row_blk > row_access[blk / 8]) {
+        if (row_blk > row_access[blk / 8]) 
           std::cout << "row_blk " << row_blk << " row_access " << row_access[blk / 8] << std::endl; 
-        }
 
         assert(row_blk <= row_access[blk / 8]);
         assert(col_blk <= col_access[blk % 8]);

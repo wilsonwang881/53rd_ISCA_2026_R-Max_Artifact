@@ -940,37 +940,34 @@ bool CacheBus::issue_write(request_type data_packet)
 }
 
 // WL
-void O3_CPU::reset_components()
-{
-  // WL 
+void O3_CPU::reset_components() {
   // Wait for input_queue that holds the trace to become empty.
   // Hence no new intructions are being fed in.
   if (champsim::operable::context_switch_mode 
       && input_queue.empty()
-      && (num_retired >= reset_ins_count))
-  {
-    if (SIMULATE_WITH_BTB_RESET && have_cleared_BTB)
-    {
+      && (num_retired >= reset_ins_count)) {
+    if (SIMULATE_WITH_BTB_RESET && have_cleared_BTB) {
       impl_initialize_btb();
       have_cleared_BTB = false;
     } 
 
-    if (SIMULATE_WITH_BRANCH_PREDICTOR_RESET && have_cleared_BP)
-    {
+    if (SIMULATE_WITH_BRANCH_PREDICTOR_RESET && have_cleared_BP) {
       impl_initialize_branch_predictor();
       have_cleared_BP = false;
     }
 
-    if (!champsim::operable::cpu_side_reset_ready)
-    {
+    if (!champsim::operable::cpu_side_reset_ready) {
       champsim::operable::context_switch_start_cycle = current_cycle;
       champsim::operable::cpu_side_reset_ready = true;
 
       // Clear DIB 
-      DIB.clear_DIB();
+      if (SIMULATE_WITH_DIB_RESET) {
+        DIB.clear_DIB();
+        std::cout << "=> DIB cleared." << std::endl;
+      }
 
-      std::cout << "=> DIB cleared." << std::endl;
       std::cout << "=> CPU side reset ready." << std::endl;
     }
   }
 }
+// WL

@@ -1137,7 +1137,7 @@ void CACHE::reset_components()
     }
   }
 
-  if (SIMULATE_WITH_PREFETCHER_RESET) {
+  if (SIMULATE_WITH_CACHE_RESET) {
     /*
     if (have_cleared_prefetcher && !L2C_name.compare(NAME) && champsim::operable::cpu_side_reset_ready && MSHR.size() == 0 &&
     std::find(champsim::operable::emptied_cache.begin(), champsim::operable::emptied_cache.end(), NAME) == champsim::operable::emptied_cache.end())
@@ -1161,7 +1161,8 @@ void CACHE::reset_components()
         && std::find(champsim::operable::emptied_cache.begin(), champsim::operable::emptied_cache.end(), NAME)
                == champsim::operable::emptied_cache.end()) //&& MSHR.size() == 0
     {
-      clear_internal_PQ();
+      //clear_internal_PQ();
+      std::cout << "=> Cleared " << NAME << std::endl;
       champsim::operable::cache_clear_counter++;
       champsim::operable::emptied_cache.push_back(NAME);
 

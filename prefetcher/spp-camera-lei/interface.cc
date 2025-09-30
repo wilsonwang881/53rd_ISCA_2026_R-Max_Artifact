@@ -107,6 +107,13 @@ void CACHE::prefetcher_cycle_operate() {
         std::cout << "Pb has requested " << 1.0 * pref.page_bitmap.pf_metadata_limit/1024 << " KB of metadata to L2." << std::endl; 
     }
     */
+
+    if (SIMULATE_WITH_PREFETCHER_RESET) {
+      pref.clear_states();
+      std::cout << "=> Cleared SPP states." << std::endl;
+      champsim::operable::have_cleared_prefetcher = false;
+    }
+
     bool ready = (SIMULATE_WITH_BTB_RESET ? !champsim::operable::have_cleared_BTB : true) && 
                  (SIMULATE_WITH_BRANCH_PREDICTOR_RESET ? !champsim::operable::have_cleared_BP : true) &&
                  (SIMULATE_WITH_PREFETCHER_RESET ? !champsim::operable::have_cleared_prefetcher : true) &&
@@ -126,8 +133,6 @@ void CACHE::prefetcher_cycle_operate() {
       pref.context_switch_prefetch_gathered = false;
       champsim::operable::emptied_cache.clear();
       pref.page_bitmap.issued_cs_pf.clear();
-      //pref.clear_states();
-      std::cout << "SPP states not cleared." << std::endl;
       reset_misc::can_record_after_access = true;
       std::cout << NAME << " stalled " << current_cycle - context_switch_start_cycle << " cycle(s)" << " done at cycle " << current_cycle << std::endl;
     }

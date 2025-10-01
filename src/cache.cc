@@ -1116,12 +1116,6 @@ void CACHE::reset_components()
       // internal_PQ.clear();
       // std::cout << "L2C internal_PQ cleared." << std::endl;
     }
-    /*
-    else if (!LLC_name.compare(NAME)) {
-      std::cout << "LLC internal_PQ cleared." << std::endl;
-      champsim::operable::cache_clear_counter++;
-    }
-    */
   }
 
   // Record L1 cache states.
@@ -1157,18 +1151,14 @@ void CACHE::reset_components()
     }
     */
 
-    if (have_cleared_prefetcher && champsim::operable::cpu_side_reset_ready
+    if (champsim::operable::cpu_side_reset_ready
         && std::find(champsim::operable::emptied_cache.begin(), champsim::operable::emptied_cache.end(), NAME)
                == champsim::operable::emptied_cache.end()) //&& MSHR.size() == 0
     {
-      //clear_internal_PQ();
+      clear_internal_PQ();
       std::cout << "=> Cleared " << NAME << std::endl;
       champsim::operable::cache_clear_counter++;
       champsim::operable::emptied_cache.push_back(NAME);
-
-      if (champsim::operable::emptied_cache.size() == 7) {
-        have_cleared_prefetcher = false;
-      }
     }
   }
 }

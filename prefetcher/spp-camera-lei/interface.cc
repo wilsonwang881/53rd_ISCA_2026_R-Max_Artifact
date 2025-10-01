@@ -27,11 +27,13 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   pref.update_demand(base_addr,this->get_set_index(base_addr));
   pref.initiate_lookahead(base_addr);
 
+  /*
   if (access_type{type} != access_type::PREFETCH) 
     pref.page_bitmap.update(base_addr);
 
   if (useful_prefetch) 
     pref.page_bitmap.update_usefulness(base_addr);
+  */
 
   if (access_type{type} == access_type::LOAD) {
     pref.curr_addr = (base_addr >> 6) << 6;
@@ -68,8 +70,10 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
   auto &pref = ::SPP[{this, cpu}];
   //uint32_t blk_asid_match = (metadata_in >> 2) & 0x1;
 
+  /*
   if (addr != 0 && addr >= 13 * 1024 && !prefetch) 
     pref.page_bitmap.update(addr);
+  */
 
   /*
   if (blk_asid_match)
@@ -108,7 +112,7 @@ void CACHE::prefetcher_cycle_operate() {
     }
     */
 
-    if (SIMULATE_WITH_PREFETCHER_RESET) {
+    if (SIMULATE_WITH_PREFETCHER_RESET && champsim::operable::have_cleared_prefetcher) {
       pref.clear_states();
       std::cout << "=> Cleared SPP states." << std::endl;
       champsim::operable::have_cleared_prefetcher = false;

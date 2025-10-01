@@ -11,7 +11,7 @@
 #include <math.h>
 #include "champsim_constants.h"
 #include <cassert>
-#include <tuple>//HL
+#include <tuple>
 
 namespace spp {
   class SPP_PAGE_BITMAP {
@@ -26,8 +26,8 @@ namespace spp {
     std::size_t FILTER_THRESHOLD = 10;
     constexpr static bool STORAGE_LIMIT_MODE = true;
     constexpr static int CAPACITY = 3;
-    uint64_t previous_page = 0;//HL
-    uint64_t current_page = 0;//HL
+    uint64_t previous_page = 0;
+    uint64_t current_page = 0;
 
     struct PAGE_R {
       bool valid = false;
@@ -36,18 +36,18 @@ namespace spp {
       uint64_t page_no;
       bool bitmap[BITMAP_SIZE] = {0};
       uint64_t col_access[BITMAP_SIZE / 8] = {0};
-      uint64_t column_number[BITMAP_SIZE / 8];//HL
-      float fraction_column_total[BITMAP_SIZE / 8];//HL
-      float fraction_column_block[BITMAP_SIZE / 8];//HL
+      uint64_t column_number[BITMAP_SIZE / 8];
+      float fraction_column_total[BITMAP_SIZE / 8];
+      float fraction_column_block[BITMAP_SIZE / 8];
       uint8_t row_counter[BITMAP_SIZE / 8] = {0};
       uint64_t row_access[BITMAP_SIZE / 8] = {0};
-      uint64_t row_number[BITMAP_SIZE / 8];//HL
-      float fraction_row_total[BITMAP_SIZE / 8];//HL
-      float fraction_row_block[BITMAP_SIZE / 8];//HL
+      uint64_t row_number[BITMAP_SIZE / 8];
+      float fraction_row_total[BITMAP_SIZE / 8];
+      float fraction_row_block[BITMAP_SIZE / 8];
       uint64_t acc_counter = 0;
-      int8_t block_indicate[BITMAP_SIZE]={0}; //HL
-      int group_access=0; //HL
-      std::array<int8_t, BITMAP_SIZE> tot_hit;//HL
+      int8_t block_indicate[BITMAP_SIZE]={0}; 
+      int group_access=0; 
+      std::array<int8_t, BITMAP_SIZE> tot_hit;
       uint64_t total_access;
       int remaining_this_group = 20;
 

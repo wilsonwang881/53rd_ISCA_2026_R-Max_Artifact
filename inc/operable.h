@@ -64,6 +64,7 @@ namespace reset_misc {
     std::unordered_set<uint64_t> addr;
   };
 
+  /*
   extern on_demand_ins_access before_reset_on_demand_ins_access[ON_DEMAND_ACCESS_RECORD_SIZE];
   extern size_t before_reset_on_demand_ins_access_index;
 
@@ -84,6 +85,7 @@ namespace reset_misc {
   extern std::deque<addr_occr> dq_before_knn;
   extern std::deque<addr_occr> dq_after_knn;
   extern std::deque<std::pair<uint64_t, bool>> dq_prefetch_communicate;
+  */
   extern bool can_record_after_access;
 }
 // WL

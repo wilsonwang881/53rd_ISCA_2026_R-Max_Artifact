@@ -77,6 +77,7 @@ void O3_CPU::initialize()
   impl_initialize_btb();
 
   // WL: open a file to write the first 1000 on demand accesses after a context switch
+  /*
   before_reset_ins_access_file.open("before_reset_ins_accesses.txt", std::ios::out);
   after_reset_ins_access_file.open("after_reset_ins_accesses.txt", std::ios::out);
   reset_misc::before_reset_on_demand_ins_access_index = 0;
@@ -86,6 +87,7 @@ void O3_CPU::initialize()
   after_reset_data_access_file.open("after_reset_data_accesses.txt", std::ios::out);
   reset_misc::before_reset_on_demand_data_access_index = 0;
   reset_misc::after_reset_on_demand_data_access_index = 0;
+  */
   //reset_misc::knn_can_predict=0;
   // WL
 }
@@ -121,41 +123,49 @@ void O3_CPU::end_phase(unsigned finished_cpu)
 // WL
 void O3_CPU::dump_before_reset_ins_accesses()
 {
+  /*
   for(auto access : reset_misc::before_reset_on_demand_ins_access) {
     before_reset_ins_access_file << (unsigned)access.cycle << " " << (unsigned)access.ip << std::endl;
   }
 
   before_reset_ins_access_file << "======" << std::endl;
+  */
 }
 
 // WL 
 void O3_CPU::dump_after_reset_ins_accesses()
 {
+  /*
   for(auto access : reset_misc::after_reset_on_demand_ins_access) {
     after_reset_ins_access_file << (unsigned)access.cycle << " " << (unsigned)access.ip << std::endl;
   }
 
   after_reset_ins_access_file << "======" << std::endl;
+  */
 }
 
 // WL 
 void O3_CPU::dump_before_reset_data_accesses()
 {
+  /*
   for(auto access : reset_misc::before_reset_on_demand_data_access) {
     before_reset_data_access_file << (unsigned)access.cycle << " " << (unsigned)access.ip << " " << access.load_or_store << std::endl; 
   }
 
   before_reset_data_access_file << "======" << std::endl;
+  */
 }
 
 // WL 
 void O3_CPU::dump_after_reset_data_accesses()
 {
+  /*
   for(auto access : reset_misc::after_reset_on_demand_data_access) {
     after_reset_data_access_file << (unsigned)access.cycle << " " << (unsigned)access.ip << " " << access.load_or_store << std::endl; 
   }
 
   after_reset_data_access_file << "======" << std::endl;
+  */
 }
 
 // WL 
@@ -201,13 +211,16 @@ void O3_CPU::initialize_instruction()
     // WL 
     // Record the first 1000 instruction accesses right after the context switch.
     if (have_recorded_on_demand_ins_accesses) {
+      /*
       reset_misc::after_reset_on_demand_ins_access[reset_misc::after_reset_on_demand_ins_access_index].cycle = current_cycle;
       reset_misc::after_reset_on_demand_ins_access[reset_misc::after_reset_on_demand_ins_access_index].ip = input_queue.front().ip;
       reset_misc::after_reset_on_demand_ins_access_index++;
+      */
       //std::cout<<"The index inside the reset_misc is "<< reset_misc::after_reset_on_demand_ins_access_index<<std::endl;
     }
 
     // Write the first 1000 accesses after the context switch to file.
+    /*
     if (reset_misc::after_reset_on_demand_ins_access_index >= ON_DEMAND_ACCESS_RECORD_SIZE) {
       have_recorded_on_demand_ins_accesses = false;
       //champsim::operable::knn_can_predict = true;
@@ -219,25 +232,28 @@ void O3_CPU::initialize_instruction()
       //Update the KNN value
       //champsim::operable::knn_can_predict = true;
       dump_after_reset_ins_accesses();
-      /*
       have_recorded_before_reset_hit_miss_number_L1I = true;
       have_recorded_before_reset_hit_miss_number_L1D = true;
       have_recorded_before_reset_hit_miss_number_L2C = true;
       have_recorded_before_reset_hit_miss_number_LLC = true;
-      */
     }
+    */
 
     // Record the 1000 accesses right before the context switch.
-    reset_misc::before_reset_on_demand_ins_access[reset_misc::before_reset_on_demand_ins_access_index].cycle = current_cycle;
-    reset_misc::before_reset_on_demand_ins_access[reset_misc::before_reset_on_demand_ins_access_index].ip = input_queue.front().ip;
-    reset_misc::before_reset_on_demand_ins_access_index++;
+    //reset_misc::before_reset_on_demand_ins_access[reset_misc::before_reset_on_demand_ins_access_index].cycle = current_cycle;
+    //reset_misc::before_reset_on_demand_ins_access[reset_misc::before_reset_on_demand_ins_access_index].ip = input_queue.front().ip;
+    //reset_misc::before_reset_on_demand_ins_access_index++;
 
+    /*
     if (reset_misc::before_reset_on_demand_ins_access_index >= ON_DEMAND_ACCESS_RECORD_SIZE) 
       reset_misc::before_reset_on_demand_ins_access_index = reset_misc::before_reset_on_demand_ins_access_index % ON_DEMAND_ACCESS_RECORD_SIZE;
+    */
     
     if (have_recorded_before_reset_on_demand_ins_accesses) {
+      /*
       std::cout << "Dumping 1000 on demand instruction accesses before context switch." << std::endl;
       dump_before_reset_ins_accesses();
+      */
       have_recorded_before_reset_on_demand_ins_accesses = false;
     }
     
@@ -624,13 +640,16 @@ long O3_CPU::operate_lsq()
     // WL 
     // Record the first 1000 data accesses right after the context switch.
     if (have_recorded_on_demand_data_accesses) {
+    /*
       reset_misc::after_reset_on_demand_data_access[reset_misc::after_reset_on_demand_data_access_index].cycle = current_cycle;
       reset_misc::after_reset_on_demand_data_access[reset_misc::after_reset_on_demand_data_access_index].ip = sq_entry.virtual_address;
       reset_misc::after_reset_on_demand_data_access[reset_misc::after_reset_on_demand_data_access_index].load_or_store = false;
       reset_misc::after_reset_on_demand_data_access_index++;
+      */
     }
 
     // Write the first 1000 accesses after the context switch to file.
+    /*
     if (reset_misc::after_reset_on_demand_data_access_index >= ON_DEMAND_ACCESS_RECORD_SIZE) {
       //champsim::operable::knn_can_predict = true;
       have_recorded_on_demand_data_accesses = false;
@@ -638,19 +657,26 @@ long O3_CPU::operate_lsq()
       std::cout << "Dumping 1st 1000 on demand data accesses after context switch." << std::endl;
       dump_after_reset_data_accesses();
     }
+    */
 
     // Record the 1000 data accesses right before the context switch.
+    /*
     reset_misc::before_reset_on_demand_data_access[reset_misc::before_reset_on_demand_data_access_index].cycle = current_cycle;
     reset_misc::before_reset_on_demand_data_access[reset_misc::before_reset_on_demand_data_access_index].ip = sq_entry.virtual_address;
     reset_misc::before_reset_on_demand_data_access[reset_misc::before_reset_on_demand_data_access_index].load_or_store = false;
     reset_misc::before_reset_on_demand_data_access_index++;
+    */
 
+    /*
     if (reset_misc::before_reset_on_demand_data_access_index >= ON_DEMAND_ACCESS_RECORD_SIZE) 
       reset_misc::before_reset_on_demand_data_access_index = reset_misc::before_reset_on_demand_data_access_index % ON_DEMAND_ACCESS_RECORD_SIZE;
+    */
 
     if (have_recorded_before_reset_on_demand_data_accesses) {
+      /*
       std::cout << "Dumping 1000 on demand data accesses before context switch." << std::endl;
       dump_before_reset_data_accesses();
+      */
       have_recorded_before_reset_on_demand_data_accesses = false;
     }
     // WL
@@ -671,14 +697,17 @@ long O3_CPU::operate_lsq()
         lq_entry->fetch_issued = true;
         // WL 
         // Record the first 1000 data accesses right after the context switch.
+      /*
       if (have_recorded_on_demand_data_accesses) {
         reset_misc::after_reset_on_demand_data_access[reset_misc::after_reset_on_demand_data_access_index].cycle = current_cycle;
         reset_misc::after_reset_on_demand_data_access[reset_misc::after_reset_on_demand_data_access_index].ip = lq_entry->virtual_address;
         reset_misc::after_reset_on_demand_data_access[reset_misc::after_reset_on_demand_data_access_index].load_or_store = true;
         reset_misc::after_reset_on_demand_data_access_index++;
       }
+      */
 
       // Write the first 1000 accesses after the context switch to file.
+      /*
       if (reset_misc::after_reset_on_demand_data_access_index >= ON_DEMAND_ACCESS_RECORD_SIZE) {
         //champsim::operable::knn_can_predict = true;
         have_recorded_on_demand_data_accesses = false;
@@ -686,19 +715,26 @@ long O3_CPU::operate_lsq()
         std::cout << "Dumping 1st 1000 on demand data accesses after context switch." << std::endl;
         dump_after_reset_data_accesses();
       }
+      */
 
       // Record the 1000 data accesses right before the context switch.
+      /*
       reset_misc::before_reset_on_demand_data_access[reset_misc::before_reset_on_demand_data_access_index].cycle = current_cycle;
       reset_misc::before_reset_on_demand_data_access[reset_misc::before_reset_on_demand_data_access_index].ip = lq_entry->virtual_address;
       reset_misc::before_reset_on_demand_data_access[reset_misc::before_reset_on_demand_data_access_index].load_or_store = true;
       reset_misc::before_reset_on_demand_data_access_index++;
+      */
 
+      /*
       if (reset_misc::before_reset_on_demand_data_access_index >= ON_DEMAND_ACCESS_RECORD_SIZE) 
         reset_misc::before_reset_on_demand_data_access_index = reset_misc::before_reset_on_demand_data_access_index % ON_DEMAND_ACCESS_RECORD_SIZE;
+      */
 
       if (have_recorded_before_reset_on_demand_data_accesses) {
+        /*
         std::cout << "Dumping 1000 on demand data accesses before context switch." << std::endl;
         dump_before_reset_data_accesses();
+        */
         have_recorded_before_reset_on_demand_data_accesses = false;
       }
       // WL

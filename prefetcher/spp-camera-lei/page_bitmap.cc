@@ -164,6 +164,7 @@ std::vector<std::tuple<uint64_t, bool, int8_t>> spp::SPP_PAGE_BITMAP::gather_pf(
       }
     }
 
+    /*
     for (size_t i = 0; i < FILTER_SIZE; i++) {
       if (filter[i].valid) {
         uint64_t page_addr = filter[i].page_no << 12;
@@ -179,6 +180,7 @@ std::vector<std::tuple<uint64_t, bool, int8_t>> spp::SPP_PAGE_BITMAP::gather_pf(
         //}
       } 
     }
+    */
  
     std::cout << "Page bitmap gathered " << cs_pf.size() << " prefetches. " << filter_sum << " are from the filter." << std::endl;
 

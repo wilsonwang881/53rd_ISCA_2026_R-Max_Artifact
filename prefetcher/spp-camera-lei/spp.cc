@@ -48,12 +48,15 @@ void spp::prefetcher::issue(CACHE* cache)
     //if (q_occupancy[2] <= 16) {
     std::vector<uint64_t> to_remove;
     uint64_t curr_pg = curr_addr >> 12;
+
+    /*
     int8_t group;
 
     for (auto var : available_prefetches[curr_pg]) {
       if(std::get<0>(var) == curr_addr)
         group = std::get<2>(var);
     }
+    */
 
     for(auto it = available_prefetches[curr_pg].begin(); it != available_prefetches[curr_pg].end(); ++it) {
       auto [addr, priority, group_id] = *it; 

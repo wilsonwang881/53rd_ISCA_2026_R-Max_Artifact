@@ -105,7 +105,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   cpu = fill_mshr.cpu;
 
   // WL
-  if (!L2C_name.compare(NAME)) {
+  if (!ORACLE_at.compare(NAME)) {
     auto search = std::find(do_not_fill_address.begin(), do_not_fill_address.end(), (fill_mshr.address >> 6) << 6);
 
     if (search != do_not_fill_address.end() && fill_mshr.type != access_type::WRITE) {
@@ -120,7 +120,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     }
   }
 
-  if (!L2C_name.compare(NAME)) {
+  if (!ORACLE_at.compare(NAME)) {
 
     auto search = std::find(do_not_fill_write_address.begin(), do_not_fill_write_address.end(), (fill_mshr.address >> 6) << 6);
 

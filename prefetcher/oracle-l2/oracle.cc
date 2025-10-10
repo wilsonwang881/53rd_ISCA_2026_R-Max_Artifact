@@ -59,7 +59,7 @@ void spp_l3::SPP_ORACLE::file_read() {
     int set_number_end = SET_NUM / MEMORY_USAGE_REDUCTION_FACTOR * (set_partition + 1);
     rec_file.open(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
     uint64_t readin_cycle_demanded, readin_addr, readin_miss_or_hit;
-    uint8_t type;
+    uint64_t type;
     std::deque<acc_timestamp> readin;
 
     while(!rec_file.eof()) {
@@ -354,7 +354,7 @@ void spp_l3::SPP_ORACLE::file_read() {
 
   for(auto set_pf: oracle_pf) {
     for(auto var : set_pf) {
-      if (var.type == 3) 
+      if (var.type == 3 ) // || var.type== 1
         non_pf_counter++; 
     }
   }

@@ -520,7 +520,7 @@ std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> spp_l3::SPP_ORACLE::poll
         }
 
         if (ORACLE_DEBUG_PRINT) 
-          std::cout << "Runahead PF: addr = " << cache_state[set * WAY_NUM + way].addr << " set " << set << " way " << way << " accesses = " << cache_state[set * WAY_NUM + way].pending_accesses << " added accesses " << ite->miss_or_hit << " before accesses " << before_counter << " type " << ite->type << " cycle " << cache_state[set * WAY_NUM + way].timestamp << std::endl;
+          std::cout << "Runahead PF: addr = " << cache_state[set * WAY_NUM + way].addr << " set " << set << " way " << way << " accesses = " << cache_state[set * WAY_NUM + way].pending_accesses << " added accesses " << ite->miss_or_hit << " before accesses " << before_counter << " type " << (unsigned)ite->type << " cycle " << cache_state[set * WAY_NUM + way].timestamp << std::endl;
       }
       else {
         std::cout << "set " << set << " way " << way << " set_availability " << set_availability[set] << std::endl;

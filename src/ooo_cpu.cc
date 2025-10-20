@@ -691,10 +691,26 @@ long O3_CPU::operate_lsq()
   for (auto& lq_entry : LQ) {
     if (load_bw > 0 && lq_entry.has_value() && lq_entry->producer_id == std::numeric_limits<uint64_t>::max() && !lq_entry->fetch_issued
         && lq_entry->event_cycle < current_cycle) {
+      /*
       auto success = execute_load(*lq_entry);
       if (success) {
         --load_bw;
         lq_entry->fetch_issued = true;
+      */
+      for(auto& lq_entry_check : LQ) {
+        if(lq_entry_check.has_value() && lq_entry_check->fetch_issued && (lq_entry_check->virtual_address >> LOG2_BLOCK_SIZE == lq_entry->virtual_address >> LOG2_BLOCK_SIZE))
+        {
+          lq_entry->fetch_issued = true;
+          break;
+        }
+      }
+      if(!lq_entry->fetch_issued) {
+        auto success = execute_load(*lq_entry);
+        if (success) {
+          --load_bw;
+          lq_entry->fetch_issued = true;
+        }
+      }
         // WL 
         // Record the first 1000 data accesses right after the context switch.
       /*
@@ -738,7 +754,6 @@ long O3_CPU::operate_lsq()
         have_recorded_before_reset_on_demand_data_accesses = false;
       }
       // WL
-      }
     }
   }
 

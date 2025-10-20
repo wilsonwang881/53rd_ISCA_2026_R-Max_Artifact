@@ -32,8 +32,8 @@ namespace spp_l3 {
 
     public:
     constexpr static bool ROLLBACK_ENABLED = true;
-    const static int SET_NUM = 2048;
-    const static int WAY_NUM = 10;
+    const static int SET_NUM = 64;
+    const static int WAY_NUM = 12;
     bool ORACLE_ACTIVE = true;
     uint64_t new_misses = 0;
     uint64_t runahead_hits = 0;

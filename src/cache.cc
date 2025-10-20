@@ -138,7 +138,11 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       writeback_packet.pf_metadata = fill_mshr.pf_metadata;
       writeback_packet.response_requested = false;
       lower_level->add_wq(writeback_packet);
-
+      response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data,
+                             0,     fill_mshr.asid[0],   fill_mshr.instr_depend_on_me}; // WL: added ASID
+      for (auto ret : fill_mshr.to_return)
+        ret->push_back(response);
+      
       return true;
     }
   }
@@ -269,7 +273,6 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
   } else {
     // Bypass
     assert(fill_mshr.type != access_type::WRITE);
-
     //metadata_thru =
     //    impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == access_type::PREFETCH, 0, metadata_thru);
     //impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, 0,

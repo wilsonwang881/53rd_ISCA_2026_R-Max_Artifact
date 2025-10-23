@@ -33,7 +33,19 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
     return metadata_in; 
 
   // Return if a demand misses and cannot merge in MSHR and MSHR is full.
-  if (pref.oracle.ORACLE_ACTIVE && !cache_hit && type != 3) {
+  if (pref.oracle.ORACLE_ACTIVE && !cache_hit && type != 3 && NAME.compare(champsim::operable::L1D_name)) {
+    auto search_mshr = std::find_if(std::begin(this->MSHR), std::end(this->MSHR),
+                       [match = base_addr >> this->OFFSET_BITS, shamt = this->OFFSET_BITS]
+                       (const auto& entry) {
+                         return (entry.address >> shamt) == match; 
+                       });
+
+    if (search_mshr == this->MSHR.end() 
+        && this->get_mshr_occupancy() == this->get_mshr_size()) 
+      return metadata_in; 
+  }
+
+  if (pref.oracle.ORACLE_ACTIVE && !cache_hit && !NAME.compare(champsim::operable::L1D_name)) {
     auto search_mshr = std::find_if(std::begin(this->MSHR), std::end(this->MSHR),
                        [match = base_addr >> this->OFFSET_BITS, shamt = this->OFFSET_BITS]
                        (const auto& entry) {
@@ -486,8 +498,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
     pref.issued_cs_pf.erase(base_addr);
   }
 
-  // Champsim does not check MSHRs for write misses.
-  if (type == 3 && !original_hit && found_in_MSHR) {
+  // Champsim does not check MSHRs for write misses for caches other than L1D.
+  if (type == 3 && !original_hit && found_in_MSHR && NAME.compare(champsim::operable::L1D_name)) {
     auto search = std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr);
 
     if (search == this->do_not_fill_address.end()) {
@@ -502,6 +514,25 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
                                     false,
                                     this,
                                     "do_not_fill_write_address");
+    }
+  }
+
+  // L1D checks MSHR for write misses.
+  if (type == 3 && !original_hit && found_in_inflight_writes && !NAME.compare(champsim::operable::L1D_name)) {
+    auto search = std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr);
+
+    if (search == this->do_not_fill_write_address.end()) {
+      this->do_not_fill_write_address.push_back(base_addr);
+
+      if (pref.debug_print) 
+        std::cout << "addr " << base_addr << " set " << this->get_set_index(base_addr) << " pushed to do_not_fill_address" << std::endl; 
+    }
+    else {
+      pref.update_do_not_fill_queue(this->do_not_fill_address,
+                                    base_addr, 
+                                    false,
+                                    this,
+                                    "do_not_fill_address");
     }
   }
 

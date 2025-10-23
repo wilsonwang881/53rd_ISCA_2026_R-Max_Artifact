@@ -488,7 +488,7 @@ std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> spp_l3::SPP_ORACLE::poll
           set_availability[set]--;
 
         if (ite->type == 3) { 
-          std::get<3>(target) = true;
+          std::get<3>(target) = false;
 
           if (ORACLE_DEBUG_PRINT) 
             std::cout << "Skipping addr " << ite->addr << " type " << (unsigned)ite->type << std::endl;
@@ -501,8 +501,7 @@ std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> spp_l3::SPP_ORACLE::poll
         cache_state[set * WAY_NUM + way].last_access_timestamp = ite->reuse_dist_lst_timestmp;
 
         //if (cache_state[set * WAY_NUM + way].pending_accesses == 0) 
-        if (ite->type != 3) 
-          target_v.push_back(target);
+        target_v.push_back(target);
 
         cache_state[set * WAY_NUM + way].pending_accesses += (int)(ite->miss_or_hit);
         oracle_pf[set].pop_front();
@@ -545,7 +544,7 @@ uint64_t spp_l3::SPP_ORACLE::rollback_prefetch(uint64_t addr) {
     }
   }
 
-  //not_accessed_pf_found = false;
+  not_accessed_pf_found = false;
 
   if (not_accessed_pf_found) {
     for (uint64_t i = set * WAY_NUM; i < (set + 1) * WAY_NUM; i++) {

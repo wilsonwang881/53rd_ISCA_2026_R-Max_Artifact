@@ -33,19 +33,13 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
     return metadata_in; 
 
   // Return if a demand misses and cannot merge in MSHR and MSHR is full.
-  if (pref.oracle.ORACLE_ACTIVE && !cache_hit && type != 3 && NAME.compare(champsim::operable::L1D_name)) {
-    auto search_mshr = std::find_if(std::begin(this->MSHR), std::end(this->MSHR),
-                       [match = base_addr >> this->OFFSET_BITS, shamt = this->OFFSET_BITS]
-                       (const auto& entry) {
-                         return (entry.address >> shamt) == match; 
-                       });
-
-    if (search_mshr == this->MSHR.end() 
-        && this->get_mshr_occupancy() == this->get_mshr_size()) 
-      return metadata_in; 
-  }
-
-  if (pref.oracle.ORACLE_ACTIVE && !cache_hit && !NAME.compare(champsim::operable::L1D_name)) {
+  // Exclude WRITE misses for L2 and LLC.
+  // Include WRITE misses for L1D.
+  bool initiate_MSHR_search = pref.oracle.ORACLE_ACTIVE && 
+                              !cache_hit &&
+                              ((type != 3 && NAME.compare(champsim::operable::L1D_name)) ||
+                              (!NAME.compare(champsim::operable::L1D_name)));
+  if (initiate_MSHR_search) {
     auto search_mshr = std::find_if(std::begin(this->MSHR), std::end(this->MSHR),
                        [match = base_addr >> this->OFFSET_BITS, shamt = this->OFFSET_BITS]
                        (const auto& entry) {
@@ -518,7 +512,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   }
 
   // L1D checks MSHR for write misses.
-  if (type == 3 && !original_hit && found_in_inflight_writes && !NAME.compare(champsim::operable::L1D_name)) {
+  if (type == 3 && !original_hit && found_in_MSHR && !NAME.compare(champsim::operable::L1D_name)) {
     auto search = std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr);
 
     if (search == this->do_not_fill_write_address.end()) {

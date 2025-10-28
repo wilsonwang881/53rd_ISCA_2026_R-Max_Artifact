@@ -15,12 +15,12 @@ namespace {
 uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
   uint64_t res = 0;
 
-  if (!context_switch_issue_queue.empty()) {
+  if (!pending_pf_q.empty()) {
 
     auto mshr_occupancy = cache->get_mshr_occupancy();
     auto rq_occupancy = cache->get_rq_occupancy().back();
     auto wq_occupancy = cache->get_wq_occupancy().back();
-    auto [addr, cycle, priority, RFO_write] = context_switch_issue_queue.front();
+    auto [addr, cycle, priority, RFO_write] = pending_pf_q.front();
     uint64_t set = (addr >> 6) & champsim::bitmask(champsim::lg2(cache->NUM_SET));
     uint64_t way = cache->get_way(addr, set);
     auto search_mshr = std::find_if(std::begin(cache->MSHR), std::end(cache->MSHR),
@@ -38,11 +38,11 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
       std::cout << "Trying to issue " << addr 
         << " for set " << ((addr >> 6) & champsim::bitmask(champsim::lg2(cache->NUM_SET))) 
         << " at cycle " << cache->current_cycle << " MSHR usage: " << mshr_occupancy 
-        << " queue size " << context_switch_issue_queue.size() << " wq " << wq_occupancy 
+        << " queue size " << pending_pf_q.size() << " wq " << wq_occupancy 
         << " rq " << rq_occupancy << std::endl;
 
       assert(remaining_acc != -1);
-      context_switch_issue_queue.pop_front();
+      pending_pf_q.pop_front();
       return 0;
     }
 
@@ -53,10 +53,10 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
         bool prefetched = cache->prefetch_line(addr, priority, 0, 0);
 
         if (prefetched) {
-          context_switch_issue_queue.pop_front();
+          pending_pf_q.pop_front();
 
-          if (context_switch_issue_queue.size() % 100000 == 0) 
-            context_switch_issue_queue.shrink_to_fit();
+          if (pending_pf_q.size() % 100000 == 0) 
+            pending_pf_q.shrink_to_fit();
 
           issued_cs_pf.insert((addr >> 6) << 6);
           total_issued_cs_pf++;
@@ -65,12 +65,12 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
             std::cout << "Issued " << addr << " for set " 
               << ((addr >> 6) & champsim::bitmask(champsim::lg2(cache->NUM_SET))) 
               << " at cycle " << cache->current_cycle << " MSHR usage: " 
-              << mshr_occupancy << " queue size " << context_switch_issue_queue.size() 
+              << mshr_occupancy << " queue size " << pending_pf_q.size() 
               << " wq " << wq_occupancy << " rq " << rq_occupancy << std::endl;
         }
       }
       else {
-        context_switch_issue_queue.pop_front();
+        pending_pf_q.pop_front();
         champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
 
         res = 0;
@@ -81,16 +81,16 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
     }
     else if (RFO_write) {
       res = 0;
-      context_switch_issue_queue.pop_front();
+      pending_pf_q.pop_front();
 
-      if (context_switch_issue_queue.size() % 100000 == 0) 
-        context_switch_issue_queue.shrink_to_fit();
+      if (pending_pf_q.size() % 100000 == 0) 
+        pending_pf_q.shrink_to_fit();
 
       if (debug_print) 
         std::cout << "Issue WRITE operation " << addr << " for set " 
           << ((addr >> 6) & champsim::bitmask(champsim::lg2(cache->NUM_SET))) 
           << " at cycle " << cache->current_cycle << " MSHR usage: " 
-          << mshr_occupancy << " queue size " << context_switch_issue_queue.size() 
+          << mshr_occupancy << " queue size " << pending_pf_q.size() 
           << " wq " << wq_occupancy << " rq " << rq_occupancy << std::endl;
     }
   }
@@ -122,7 +122,7 @@ void spp_l3::prefetcher::call_poll(CACHE* cache) {
         champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
       }
       else {
-        auto possible_duplicate_pf = std::find_if(std::begin(context_switch_issue_queue), std::end(context_switch_issue_queue),
+        auto possible_duplicate_pf = std::find_if(std::begin(pending_pf_q), std::end(pending_pf_q),
                                      [match = addr >> cache->OFFSET_BITS, shamt = cache->OFFSET_BITS](const auto& entry) {
                                        return (std::get<0>(entry) >> shamt) == match; 
                                      });
@@ -132,11 +132,11 @@ void spp_l3::prefetcher::call_poll(CACHE* cache) {
                                        return (entry.address >> shamt) == match; 
                                      });
 
-        if (possible_duplicate_pf == context_switch_issue_queue.end() 
+        if (possible_duplicate_pf == pending_pf_q.end() 
             && possible_duplicate_mshr == cache->MSHR.end()) {
           auto pq_place_at = [demanded = std::get<1>(potential_cs_pf)](auto& entry) {return std::get<1>(entry) > demanded;};
-          auto pq_insert_it = std::find_if(context_switch_issue_queue.begin(), context_switch_issue_queue.end(), pq_place_at);
-          context_switch_issue_queue.emplace(pq_insert_it,std::get<0>(potential_cs_pf), std::get<1>(potential_cs_pf), std::get<2>(potential_cs_pf), std::get<3>(potential_cs_pf));
+          auto pq_insert_it = std::find_if(pending_pf_q.begin(), pending_pf_q.end(), pq_place_at);
+          pending_pf_q.emplace(pq_insert_it,std::get<0>(potential_cs_pf), std::get<1>(potential_cs_pf), std::get<2>(potential_cs_pf), std::get<3>(potential_cs_pf));
         }
       }
     }
@@ -144,13 +144,13 @@ void spp_l3::prefetcher::call_poll(CACHE* cache) {
 }
 
 void spp_l3::prefetcher::erase_duplicate_entry_in_ready_queue(CACHE* cache, uint64_t addr) {
-  auto possible_duplicate_pf = std::find_if(std::begin(context_switch_issue_queue), std::end(context_switch_issue_queue),
+  auto possible_duplicate_pf = std::find_if(std::begin(pending_pf_q), std::end(pending_pf_q),
                                [match = addr >> cache->OFFSET_BITS, shamt = cache->OFFSET_BITS](const auto& entry) {
                                  return (std::get<0>(entry) >> shamt) == match; 
                                });
 
-  if (possible_duplicate_pf != context_switch_issue_queue.end()) 
-    context_switch_issue_queue.erase(possible_duplicate_pf); 
+  if (possible_duplicate_pf != pending_pf_q.end()) 
+    pending_pf_q.erase(possible_duplicate_pf); 
 }
 
 void spp_l3::prefetcher::update_do_not_fill_queue(std::deque<uint64_t> &dq, uint64_t addr, bool erase, CACHE* cache, std::string q_name){
@@ -182,6 +182,14 @@ void spp_l3::prefetcher::update_do_not_fill_queue(std::deque<uint64_t> &dq, uint
 spp_l3::SPP_ORACLE::acc_timestamp spp_l3::prefetcher::rollback(uint64_t addr, std::deque<SPP_ORACLE::acc_timestamp>::iterator search, CACHE* cache) {
   // Find the target to replace.
   uint64_t rollback_cache_state_index = oracle.rollback_prefetch(addr); 
+  uint64_t set = oracle.calc_set(addr);
+
+  for (size_t i = set * oracle.WAY_NUM; i < (set + 1) * oracle.WAY_NUM; i++) {
+    if (!check_issued(cache, oracle.cache_state[i].addr)) {
+      rollback_cache_state_index = i;
+      break;
+    }  
+  }
   assert(search->miss_or_hit > 1);
 
   SPP_ORACLE::acc_timestamp rollback_pf;
@@ -217,11 +225,11 @@ void spp_l3::prefetcher::update_MSHR_inflight_write_rollback(CACHE* cache, SPP_O
                               });
 
   if (search_mshr_rollback != cache->MSHR.end()) 
-    update_do_not_fill_queue(cache->do_not_fill_address, 
+    update_do_not_fill_queue(search_mshr_rollback->type == access_type::WRITE ? cache->do_not_fill_write_address : cache->do_not_fill_address, 
                              rollback_pf.addr, 
                              false, 
                              cache, 
-                             " do_not_fill_address rollback_pf in MSHR");
+                             search_mshr_rollback->type == access_type::WRITE ? "do_not_fill_write_address rollback_pf in MSHR" : "do_not_fill_address rollback_pf in MSHR");
 
   // If the rollback prefetch is in inflight_writes, push to do not fill.
   auto search_writes_rollback = std::find_if(std::begin(cache->inflight_writes), std::end(cache->inflight_writes),
@@ -276,3 +284,20 @@ bool spp_l3::prefetcher::check_issued(CACHE* cache, uint64_t addr) {
   return (check_cache < cache->NUM_WAY) || (search_mshr != cache->MSHR.end());
 }
 
+bool spp_l3::prefetcher::search_MSHR_inflight_writes(CACHE* cache, Q_TYPE type, uint64_t addr) {
+  auto q = (type == Q_TYPE::MSHR) ? cache->MSHR : cache->inflight_writes;
+
+  return std::find_if(std::begin(q), std::end(q),
+         [match = addr >> cache->OFFSET_BITS, shamt = cache->OFFSET_BITS]
+         (const auto& entry) {
+           return (entry.address >> shamt) == match; 
+         }) != q.end();
+}
+
+bool spp_l3::prefetcher::search_do_not_fill_qs(CACHE* cache, std::deque<uint64_t> q, uint64_t addr) {
+  return std::find_if(std::begin(q), std::end(q),
+         [match = addr >> cache->OFFSET_BITS, shamt = cache->OFFSET_BITS]
+         (const auto& entry) {
+           return (entry >> shamt) == match; 
+         }) != q.end();
+}

@@ -48,6 +48,7 @@ namespace spp_l3 {
     uint64_t unhandled_misses_replaced = 0;
     uint64_t unhandled_non_write_misses_not_filled = 0;
     uint64_t unhandled_write_misses_not_filled = 0;
+    uint64_t error_c = 0;
 
 #pragma pack(push,1)
     struct acc_timestamp {

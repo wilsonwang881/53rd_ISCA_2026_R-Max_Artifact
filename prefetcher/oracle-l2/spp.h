@@ -21,12 +21,17 @@
 
 class CACHE;
 
+enum class Q_TYPE {
+  MSHR,
+  INFLIGHT_WRITES
+};
+
 namespace spp_l3 {
   class prefetcher
   {
     public:
 
-    std::deque<std::tuple<uint64_t, uint64_t, bool, bool>> context_switch_issue_queue; // addr, cycle, pf_to_this_level, RFO/WRITE
+    std::deque<std::tuple<uint64_t, uint64_t, bool, bool>> pending_pf_q; // addr, cycle, pf_to_this_level, RFO/WRITE
     SPP_ORACLE oracle;
     bool debug_print = false;
     uint64_t last_handled_addr;
@@ -43,6 +48,8 @@ namespace spp_l3 {
     void update_MSHR_inflight_write_rollback(CACHE* cache, SPP_ORACLE::acc_timestamp rollback_pf);
     void place_rollback(CACHE* cache, std::deque<SPP_ORACLE::acc_timestamp>::iterator search, uint64_t set, uint64_t way);
     bool check_issued(CACHE* cache, uint64_t addr);
+    bool search_MSHR_inflight_writes(CACHE* cache, Q_TYPE type, uint64_t addr);
+    bool search_do_not_fill_qs(CACHE* cache, std::deque<uint64_t> q, uint64_t addr);
   };
 } // namespace spp_l3
 

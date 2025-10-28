@@ -109,6 +109,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     auto search = std::find(do_not_fill_address.begin(), do_not_fill_address.end(), (fill_mshr.address >> 6) << 6);
 
     if (search != do_not_fill_address.end() && fill_mshr.type != access_type::WRITE) {
+      //std::cout << "Skipped fill for address " << ((fill_mshr.address >> 6) << 6) << " in set " << get_set_index(fill_mshr.address) << std::endl;
       do_not_fill_address.erase(search);
       sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
       response_type response{fill_mshr.address, fill_mshr.v_address, fill_mshr.data,
@@ -125,6 +126,8 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     auto search = std::find(do_not_fill_write_address.begin(), do_not_fill_write_address.end(), (fill_mshr.address >> 6) << 6);
 
     if (search != do_not_fill_write_address.end() && fill_mshr.type == access_type::WRITE) {
+      //std::cout << "Skipped write fill for address " << ((fill_mshr.address >> 6) << 6) << " in set " << get_set_index(fill_mshr.address) << std::endl;
+
       do_not_fill_write_address.erase(search);
       sim_stats.total_miss_latency += current_cycle - (fill_mshr.cycle_enqueued + 1);
       request_type writeback_packet;

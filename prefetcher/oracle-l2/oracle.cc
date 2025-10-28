@@ -606,6 +606,7 @@ void spp_l3::SPP_ORACLE::finish() {
   std::cout << "Unhandled misses replaced " << unhandled_misses_replaced << std::endl;
   std::cout << "Unhandled non-write misses not filled " << unhandled_non_write_misses_not_filled << std::endl;
   std::cout << "Unhandled write misses not filled " << unhandled_write_misses_not_filled << std::endl;
+  std::cout << "Incorrectly placed blocks " << error_c << std::endl;
   std::cout << "New misses recorded: " << new_misses << std::endl;
   std::cout << "Remaining oracle access = " << oracle_pf_size << std::endl;
   file_write();

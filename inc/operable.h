@@ -132,6 +132,7 @@ public:
   const std::string ITLB_name = "cpu0_ITLB";
   const std::string STLB_name = "cpu0_STLB";
   const std::string ORACLE_at = L1D_name;
+  const std::string ORACLE_at_2nd = L2C_name;
 
   static std::vector<std::string> emptied_cache;
 
@@ -152,6 +153,8 @@ public:
   static uint64_t cpu0_num_retired;
 
   static std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> lru_states;
+
+  static std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> lru_states_L2C;
   // WL
 
   double leap_operation = 0;

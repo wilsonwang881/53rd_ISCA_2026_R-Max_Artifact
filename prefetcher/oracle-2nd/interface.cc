@@ -7,13 +7,13 @@
 using unique_key = std::pair<CACHE*, uint32_t>;
 
 namespace {
-  std::map<unique_key, spp_l3::prefetcher> SPP_L3;
+  std::map<unique_key, spp_l2::prefetcher> SPP_L2;
 }
 
 void CACHE::prefetcher_initialize() {
   std::cout << "Oracle initialized at " << this->NAME << std::endl;
 
-  auto &pref = ::SPP_L3[{this, cpu}];
+  auto &pref = ::SPP_L2[{this, cpu}];
 
   if (pref.oracle.ORACLE_ACTIVE) {
     pref.oracle.init();
@@ -25,10 +25,12 @@ void CACHE::prefetcher_initialize() {
 }
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) {
+  /*
   if (type == 2) 
     return metadata_in; 
+    */
 
-  auto &pref = ::SPP_L3[{this, cpu}];
+  auto &pref = ::SPP_L2[{this, cpu}];
   base_addr = (base_addr>> 6) << 6;
 
   // Return if a cache request misses and cannot merge in MSHR and MSHR is full.
@@ -69,21 +71,6 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
       pref.oracle.MSHR_hits += search_mshr; 
       found_in_inflight_writes = search_inflight_writes;
       pref.oracle.inflight_write_hits += search_inflight_writes;
-
-      // Searching for pending issue queue.
-      // MSHR may be opened by a previous miss.
-      auto search_pending_pf = std::find_if(std::begin(pref.pending_pf_q), std::end(pref.pending_pf_q),
-                               [match = base_addr >> this->OFFSET_BITS, shamt = this->OFFSET_BITS](const auto& entry) {
-                                 return (std::get<0>(entry) >> shamt) == match; 
-                               });
-
-      if (search_pending_pf != pref.pending_pf_q.end()) {
-        if (pref.debug_print) 
-          std::cout << "Also hit in pending issue queue set " << set << " addr " << base_addr << " type " << (unsigned)type << std::endl;
-
-        pref.pending_pf_q.erase(search_pending_pf); 
-      }
-
 
       // The miss can be found in MSHR.
       // The MSHR is opened by a previous operation like prefetching.
@@ -152,7 +139,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
             found_in_pending_queue = true;
 
             if (pref.debug_print) {
-              std::cout << "Hit in bkp set " << set << " addr " << base_addr << " type " << (unsigned)type << std::endl;
+              std::cout << "Hit in oracle_pf set " << set << " addr " << base_addr << " type " << (unsigned)type << std::endl;
               std::cout << "Found addr " << search_bkp_q->addr << " set " << search_bkp_q->set << " counter " << search_bkp_q->miss_or_hit << " set_availability " << pref.oracle.set_availability[search_bkp_q->set] << " found way " << way << std::endl;
             }
 
@@ -177,7 +164,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
               // If the counter > 1, replace.
               if (pref.oracle.ROLLBACK_ENABLED){
                 // Generate a rollback prefetch.
-                spp_l3::SPP_ORACLE::acc_timestamp rollback_pf = pref.rollback(base_addr, search_bkp_q, this);
+                spp_l2::SPP_ORACLE::acc_timestamp rollback_pf = pref.rollback(base_addr, search_bkp_q, this);
 
                 // Erase the moved ahead prefetch in not ready queue. 
                 pref.oracle.bkp_pf[set].erase(search_bkp_q); 
@@ -247,7 +234,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
                 // If the counter > 1, replace.
                 if (pref.oracle.ROLLBACK_ENABLED){
                   // Generate a rollback prefetch.
-                  spp_l3::SPP_ORACLE::acc_timestamp rollback_pf = pref.rollback(base_addr, search_oracle_pq, this);
+                  spp_l2::SPP_ORACLE::acc_timestamp rollback_pf = pref.rollback(base_addr, search_oracle_pq, this);
 
                   // Erase the moved ahead prefetch in not ready queue. 
                   pref.oracle.oracle_pf[set].erase(search_oracle_pq); 
@@ -340,7 +327,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
         // If the counter > 1, replace.
         if (pref.oracle.ROLLBACK_ENABLED){
           // Generate a rollback prefetch.
-          spp_l3::SPP_ORACLE::acc_timestamp rollback_pf = pref.rollback(base_addr, search_bkp_q, this);
+          spp_l2::SPP_ORACLE::acc_timestamp rollback_pf = pref.rollback(base_addr, search_bkp_q, this);
 
           // Erase the moved ahead prefetch in not ready queue. 
           pref.oracle.bkp_pf[set].erase(search_bkp_q); 
@@ -384,7 +371,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
         }
         else {
           // Generate a rollback prefetch.
-          spp_l3::SPP_ORACLE::acc_timestamp rollback_pf = pref.rollback(base_addr, search_oracle_pq, this);
+          spp_l2::SPP_ORACLE::acc_timestamp rollback_pf = pref.rollback(base_addr, search_oracle_pq, this);
 
           // Erase the moved ahead prefetch in not ready queue. 
           pref.oracle.oracle_pf[set].erase(search_oracle_pq); 
@@ -426,7 +413,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
       else {
         uint64_t lru_zero_set = set;
         uint64_t lru_zero_way = this->get_way(base_addr, lru_zero_set);
-        champsim::operable::lru_states.push_back(std::make_tuple(lru_zero_set, lru_zero_way, 0));
+        champsim::operable::lru_states_L2C.push_back(std::make_tuple(lru_zero_set, lru_zero_way, 0));
         not_found_hit = true;
       }
     }
@@ -452,7 +439,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
       if (updated_remaining_acc == -1) {
         if (found_in_MSHR || found_in_ready_queue || found_in_not_ready_queue || found_in_inflight_writes) {
           
-          if (type != 3) {
+          if (std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr) == this->do_not_fill_address.end() && type != 3) {
             pref.update_do_not_fill_queue(this->do_not_fill_address,
                                           base_addr, 
                                           false,
@@ -480,7 +467,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
             std::cout << "set " << set << " addr " << base_addr << " cleared LRU bits" << std::endl; 
 
           pref.erase_duplicate_entry_in_ready_queue(this, base_addr);
-          champsim::operable::lru_states.push_back(std::make_tuple(set, way, 0));
+          champsim::operable::lru_states_L2C.push_back(std::make_tuple(set, way, 0));
         }
       }
       else 
@@ -491,7 +478,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
                                       type == 3 ? "do_not_fill_write_address" : "do_not_fill_address");
     }
     else if (remaining_acc > 0 && way < NUM_WAY) 
-      champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
+      champsim::operable::lru_states_L2C.push_back(std::make_tuple(set, way, 1));
   }
   
   if ((pref.issued_cs_pf.find(base_addr) != pref.issued_cs_pf.end()) && useful_prefetch) {
@@ -500,7 +487,6 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   }
 
   // Champsim does not check MSHRs for write misses for caches other than L1D.
-  /*
   if (type == 3 && !original_hit && found_in_MSHR && NAME.compare(champsim::operable::L1D_name)) {
     auto search = std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr);
 
@@ -518,10 +504,8 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
                                     "do_not_fill_write_address");
     }
   }
-  */
 
   // L1D checks MSHR for write misses.
-  /*
   if (type == 3 && !original_hit && found_in_MSHR && !NAME.compare(champsim::operable::L1D_name)) {
     auto search = std::find(this->do_not_fill_write_address.begin(), this->do_not_fill_write_address.end(), base_addr);
 
@@ -539,9 +523,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
                                     "do_not_fill_address");
     }
   }
-  */
 
-  /*
   if (type != 3 && !original_hit && found_in_inflight_writes) {
     auto search = std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr);
 
@@ -559,13 +541,12 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
                                     "do_not_fill_write_address");
     }
   }
-  */
 
   return metadata_in;
 }
 
 uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way, uint8_t prefetch, uint64_t evicted_addr, uint32_t metadata_in) {
-  auto &pref = ::SPP_L3[{this, cpu}];
+  auto &pref = ::SPP_L2[{this, cpu}];
   addr = (addr >> 6) << 6;
 
   int filled_addr_counter = pref.oracle.check_pf_status(addr);
@@ -588,10 +569,10 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
   } 
 
   if (pref.oracle.ORACLE_ACTIVE && pref.oracle.check_pf_status(addr) > 0) 
-    champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
+    champsim::operable::lru_states_L2C.push_back(std::make_tuple(set, way, 1));
   else {
     pref.erase_duplicate_entry_in_ready_queue(this, addr);
-    champsim::operable::lru_states.push_back(std::make_tuple(set, way, 0));
+    champsim::operable::lru_states_L2C.push_back(std::make_tuple(set, way, 0));
     pref.call_poll(this);
 
     if (pref.debug_print) 
@@ -602,7 +583,7 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
 }
 
 void CACHE::prefetcher_cycle_operate() {
-  auto &pref = ::SPP_L3[{this, cpu}];
+  auto &pref = ::SPP_L2[{this, cpu}];
   uint64_t res = pref.issue(this);
 
   if (res != 0) {
@@ -610,12 +591,12 @@ void CACHE::prefetcher_cycle_operate() {
     uint64_t way = this->get_way(res, set);
 
     if (way < NUM_WAY) 
-      champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
+      champsim::operable::lru_states_L2C.push_back(std::make_tuple(set, way, 1));
   }
 }
 
 void CACHE::prefetcher_final_stats() {
-  auto &pref = ::SPP_L3[{this, cpu}];
+  auto &pref = ::SPP_L2[{this, cpu}];
   std::cout << "Oracle STATISTICS" << std::endl;
   std::cout << "Oracle prefetch accuracy: " << pref.issued_cs_pf_hit << "/" << pref.total_issued_cs_pf << "." << std::endl;
 

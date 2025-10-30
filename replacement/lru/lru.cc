@@ -34,6 +34,22 @@ uint32_t CACHE::find_victim(uint32_t triggering_cpu, uint64_t instr_id, uint32_t
 
     champsim::operable::lru_states.clear();
   }
+
+  if(champsim::operable::lru_states_L2C.size() > 0 && ORACLE_at_2nd.compare(this->NAME) == 0)
+  {
+    for(auto var : champsim::operable::lru_states_L2C) 
+    {
+      uint64_t target_set = std::get<0>(var);
+      uint64_t target_way = std::get<1>(var);
+      uint64_t setting = (std::get<2>(var) == 0) ? 0 : 0xFFFFFFFFFFFFFFF;
+
+      if (target_way < NUM_WAY)
+        ::last_used_cycles[this].at(target_set * NUM_WAY + target_way) = setting; 
+    }
+
+    champsim::operable::lru_states_L2C.clear();
+  }
+
   // WL
 
   // Find the way whose last use cycle is most distant
@@ -70,6 +86,25 @@ void CACHE::update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint
 
     champsim::operable::lru_states.clear();
   }
+
+  if(champsim::operable::lru_states_L2C.size() > 0 && ORACLE_at_2nd.compare(this->NAME) == 0)
+  {
+    for(auto var : champsim::operable::lru_states_L2C) 
+    {
+      uint64_t target_set = std::get<0>(var);
+      uint64_t target_way = std::get<1>(var);
+      uint64_t setting = (std::get<2>(var) == 0) ? 0 : 0xFFFFFFFFFFFFFFF;
+
+      if (target_way < NUM_WAY)
+      {
+        ::last_used_cycles[this].at(target_set * NUM_WAY + target_way) = setting; 
+        //std::cout << "LRU: result " << ::last_used_cycles[this].at(var.first * NUM_WAY + var.second) << std::endl;
+      }
+    }
+
+    champsim::operable::lru_states_L2C.clear();
+  }
+
   // WL
 
 }

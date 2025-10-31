@@ -72,6 +72,20 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
       found_in_inflight_writes = search_inflight_writes;
       pref.oracle.inflight_write_hits += search_inflight_writes;
 
+      // Searching for pending issue queue.
+      // MSHR may be opened by a previous miss.
+      auto search_pending_pf = std::find_if(std::begin(pref.pending_pf_q), std::end(pref.pending_pf_q),
+                               [match = base_addr >> this->OFFSET_BITS, shamt = this->OFFSET_BITS](const auto& entry) {
+                                 return (std::get<0>(entry) >> shamt) == match; 
+                               });
+
+      if (search_pending_pf != pref.pending_pf_q.end()) {
+        if (pref.debug_print) 
+          std::cout << "Also hit in pending issue queue set " << set << " addr " << base_addr << " type " << (unsigned)type << std::endl;
+
+        pref.pending_pf_q.erase(search_pending_pf); 
+      }
+
       // The miss can be found in MSHR.
       // The MSHR is opened by a previous operation like prefetching.
       // But the previous operation gets rolled back.
@@ -389,16 +403,6 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
             assert(pref.oracle.set_availability[set] >= 0);
           }
 
-          // Put back the rollback prefetch to not ready queue.
-          /*
-          if (rollback_pf.addr != 0) 
-            pref.oracle.oracle_pf[set].push_front(rollback_pf);
-          else {
-            pref.oracle.set_availability[set]--;
-            assert(pref.oracle.set_availability[set] >= 0);
-          }
-          */
-
           pref.oracle.oracle_pf_size--;
 
           // If the rollback prefetch is in MSHR, push to do not fill.
@@ -439,7 +443,7 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
       if (updated_remaining_acc == -1) {
         if (found_in_MSHR || found_in_ready_queue || found_in_not_ready_queue || found_in_inflight_writes) {
           
-          if (std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr) == this->do_not_fill_address.end() && type != 3) {
+          if (type != 3) {
             pref.update_do_not_fill_queue(this->do_not_fill_address,
                                           base_addr, 
                                           false,
@@ -484,62 +488,6 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   if ((pref.issued_cs_pf.find(base_addr) != pref.issued_cs_pf.end()) && useful_prefetch) {
     pref.issued_cs_pf_hit++; 
     pref.issued_cs_pf.erase(base_addr);
-  }
-
-  // Champsim does not check MSHRs for write misses for caches other than L1D.
-  if (type == 3 && !original_hit && found_in_MSHR && NAME.compare(champsim::operable::L1D_name)) {
-    auto search = std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr);
-
-    if (search == this->do_not_fill_address.end()) {
-      this->do_not_fill_address.push_back(base_addr);
-
-      if (pref.debug_print) 
-        std::cout << "addr " << base_addr << " set " << set << " pushed to do_not_fill_address" << std::endl; 
-    }
-    else {
-      pref.update_do_not_fill_queue(this->do_not_fill_write_address,
-                                    base_addr, 
-                                    false,
-                                    this,
-                                    "do_not_fill_write_address");
-    }
-  }
-
-  // L1D checks MSHR for write misses.
-  if (type == 3 && !original_hit && found_in_MSHR && !NAME.compare(champsim::operable::L1D_name)) {
-    auto search = std::find(this->do_not_fill_write_address.begin(), this->do_not_fill_write_address.end(), base_addr);
-
-    if (search == this->do_not_fill_write_address.end()) {
-      this->do_not_fill_write_address.push_back(base_addr);
-
-      if (pref.debug_print) 
-        std::cout << "addr " << base_addr << " set " << set << " pushed to do_not_fill_write_address" << std::endl; 
-    }
-    else {
-      pref.update_do_not_fill_queue(this->do_not_fill_address,
-                                    base_addr, 
-                                    false,
-                                    this,
-                                    "do_not_fill_address");
-    }
-  }
-
-  if (type != 3 && !original_hit && found_in_inflight_writes) {
-    auto search = std::find(this->do_not_fill_address.begin(), this->do_not_fill_address.end(), base_addr);
-
-    if (search == this->do_not_fill_address.end()) {
-      this->do_not_fill_address.push_back(base_addr);
-
-      if (pref.debug_print) 
-        std::cout << "type != 3 addr " << base_addr << " set " << set << " pushed to do_not_fill_address" << std::endl; 
-    }
-    else {
-      pref.update_do_not_fill_queue(this->do_not_fill_write_address,
-                                    base_addr, 
-                                    false,
-                                    this,
-                                    "do_not_fill_write_address");
-    }
   }
 
   return metadata_in;

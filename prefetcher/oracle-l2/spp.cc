@@ -184,12 +184,6 @@ spp_l3::SPP_ORACLE::acc_timestamp spp_l3::prefetcher::rollback(uint64_t addr, st
   uint64_t rollback_cache_state_index = oracle.rollback_prefetch(addr); 
   uint64_t set = oracle.calc_set(addr);
 
-  for (size_t i = set * oracle.WAY_NUM; i < (set + 1) * oracle.WAY_NUM; i++) {
-    if (!check_issued(cache, oracle.cache_state[i].addr)) {
-      rollback_cache_state_index = i;
-      break;
-    }  
-  }
   assert(search->miss_or_hit > 1);
 
   SPP_ORACLE::acc_timestamp rollback_pf;

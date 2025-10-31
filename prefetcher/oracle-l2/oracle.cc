@@ -540,7 +540,6 @@ uint64_t spp_l3::SPP_ORACLE::rollback_prefetch(uint64_t addr) {
     if (cache_state[i].last_access_timestamp < latest_cycle) {
       index = i;
       latest_cycle = cache_state[i].last_access_timestamp;
-      min_counter = cache_state[i].pending_accesses;
     }
   }
 

@@ -182,7 +182,6 @@ void spp_l2::prefetcher::update_do_not_fill_queue(std::deque<uint64_t> &dq, uint
 spp_l2::SPP_ORACLE::acc_timestamp spp_l2::prefetcher::rollback(uint64_t addr, std::deque<SPP_ORACLE::acc_timestamp>::iterator search, CACHE* cache) {
   // Find the target to replace.
   uint64_t rollback_cache_state_index = oracle.rollback_prefetch(addr); 
-  uint64_t set = oracle.calc_set(addr);
 
   assert(search->miss_or_hit > 1);
 

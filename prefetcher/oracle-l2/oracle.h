@@ -41,7 +41,6 @@ namespace spp_l3 {
     std::map<int, int> set_availability;
     uint64_t MSHR_hits = 0;
     uint64_t inflight_write_hits = 0;
-    uint64_t internal_PQ_hits = 0;
     uint64_t cs_q_hits = 0;
     uint64_t oracle_pf_hits = 0;
     uint64_t unhandled_misses_not_replaced = 0;

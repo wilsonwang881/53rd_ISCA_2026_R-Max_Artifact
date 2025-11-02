@@ -559,7 +559,6 @@ void spp_l3::SPP_ORACLE::finish() {
   std::cout << "Hits in runahead prefetch list: " << runahead_hits << std::endl;
   std::cout << "Hits in MSHR " << MSHR_hits << std::endl;
   std::cout << "Hits in inflight_writes " << inflight_write_hits << std::endl;
-  std::cout << "Hits in internal_PQ " << internal_PQ_hits << std::endl;
   std::cout << "Hits in ready to issue prefetch queue " << cs_q_hits << std::endl;
   std::cout << "Hits in oracle_pf " << oracle_pf_hits << std::endl;
   std::cout << "Unhandled misses not replaced " << unhandled_misses_not_replaced << std::endl;

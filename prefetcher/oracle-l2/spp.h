@@ -50,6 +50,8 @@ namespace spp_l3 {
     bool check_issued(CACHE* cache, uint64_t addr);
     bool search_MSHR_inflight_writes(CACHE* cache, Q_TYPE type, uint64_t addr);
     bool search_do_not_fill_qs(CACHE* cache, std::deque<uint64_t> q, uint64_t addr);
+    void rollback_op(CACHE* cache, uint64_t addr, uint8_t type, std::deque<SPP_ORACLE::acc_timestamp>::iterator search, std::deque<SPP_ORACLE::acc_timestamp> &q, bool bkp_q, std::string debug_info);
+    void cache_db_op(CACHE* cache, uint64_t addr, uint64_t set, uint8_t type, std::deque<SPP_ORACLE::acc_timestamp>::iterator search, std::deque<SPP_ORACLE::acc_timestamp> &q, bool bkp_q, std::string debug_info, bool &found_in_not_ready_queue, bool &found_in_pending_queue);
   };
 } // namespace spp_l3
 

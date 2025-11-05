@@ -192,6 +192,7 @@ spp_l3::SPP_ORACLE::acc_timestamp spp_l3::prefetcher::rollback(uint64_t addr, st
   rollback_pf.miss_or_hit = oracle.cache_state[rollback_cache_state_index].pending_accesses;
   rollback_pf.type = oracle.cache_state[rollback_cache_state_index].type;
   rollback_pf.reuse_dist_lst_timestmp = oracle.cache_state[rollback_cache_state_index].last_access_timestamp;
+  rollback_pf.times = oracle.cache_state[rollback_cache_state_index].times;
 
   // Update cache_state.
   oracle.cache_state[rollback_cache_state_index].addr = addr;
@@ -200,6 +201,7 @@ spp_l3::SPP_ORACLE::acc_timestamp spp_l3::prefetcher::rollback(uint64_t addr, st
   oracle.cache_state[rollback_cache_state_index].type = search->type;
   oracle.cache_state[rollback_cache_state_index].accessed = true;
   oracle.cache_state[rollback_cache_state_index].last_access_timestamp = search->reuse_dist_lst_timestmp - search->cycle_demanded + cache->current_cycle;
+  oracle.cache_state[rollback_cache_state_index].times = search->times;
 
   if (debug_print) 
     std::cout << "Replaced prefetch in set " << oracle.calc_set(addr) << " addr " << rollback_pf.addr << " counter " << rollback_pf.miss_or_hit << std::endl;
@@ -263,6 +265,7 @@ void spp_l3::prefetcher::place_rollback(CACHE* cache, std::deque<SPP_ORACLE::acc
   oracle.cache_state[i].type = search->type;
   oracle.cache_state[i].last_access_timestamp = search->reuse_dist_lst_timestmp - search->cycle_demanded + cache->current_cycle;
   oracle.cache_state[i].accessed = true;
+  oracle.cache_state[i].times.insert(oracle.cache_state[i].times.end(), search->times.begin(), search->times.end());
   assert(oracle.set_availability[set] >= 0);
 }
 
@@ -319,6 +322,15 @@ void spp_l3::prefetcher::rollback_op(CACHE* cache, uint64_t addr, uint8_t type, 
 
     // If the rollback prefetch is in MSHR, push to do not fill.
     update_MSHR_inflight_write_rollback(cache, rollback_pf);
+
+    // If the rollback prefetch is found in the pending issue queue.
+    auto piq_search = std::find_if(std::begin(pending_pf_q), std::end(pending_pf_q),
+                              [match = rollback_pf.addr >> cache->OFFSET_BITS, shamt = cache->OFFSET_BITS](const auto& entry) {
+                                return (std::get<0>(entry) >> shamt) == match; 
+                              });
+
+    if (piq_search!= pending_pf_q.end()) 
+      pending_pf_q.erase(piq_search);
 
     if (debug_print) 
       std::cout << debug_info << " miss in set " << set << " addr " << addr << " type " << (unsigned)type << " caused a rollback." << std::endl;

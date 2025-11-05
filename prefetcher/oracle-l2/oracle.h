@@ -27,13 +27,13 @@ namespace spp_l3 {
     constexpr static bool BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE = false;
     constexpr static bool REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE = true;
     constexpr static int MEMORY_USAGE_REDUCTION_FACTOR = 16;
-    std::string L2C_PHY_ACC_FILE_NAME = "L1D_phy_acc.txt";
+    std::string L2C_PHY_ACC_FILE_NAME = "L3C_phy_acc.txt";
     std::fstream rec_file;
 
     public:
     constexpr static bool ROLLBACK_ENABLED = true;
-    const static int SET_NUM = 64;
-    const static int WAY_NUM = 12;
+    const static int SET_NUM = 2048;
+    const static int WAY_NUM = 24;
     bool ORACLE_ACTIVE = true;
     uint64_t new_misses = 0;
     uint64_t runahead_hits = 0;
@@ -57,7 +57,7 @@ namespace spp_l3 {
       uint32_t miss_or_hit;
       uint8_t type;
       uint64_t reuse_dist_lst_timestmp;
-      std::deque<uint64_t> times;
+      //std::deque<uint64_t> times;
     };
 #pragma pack(pop)
 
@@ -73,7 +73,7 @@ namespace spp_l3 {
       uint8_t type;
       bool accessed;
       uint64_t last_access_timestamp;
-      std::deque<uint64_t> times;
+      //std::deque<uint64_t> times;
     };
 
     blk_state cache_state[SET_NUM * WAY_NUM];

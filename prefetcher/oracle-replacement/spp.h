@@ -27,8 +27,7 @@ enum class Q_TYPE {
 };
 
 namespace spp_l3 {
-  class prefetcher
-  {
+  class prefetcher {
     public:
 
     SPP_ORACLE oracle;

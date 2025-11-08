@@ -218,14 +218,27 @@ void spp_l3::SPP_ORACLE::file_read() {
 
           // If the block is in cache.
           if (block_in_cache != in_cache.end()) {
+/*
+            if (set_processing[i].set == 100) 
+              std::cout << in_cache[addr]->front() << std::hex << " & 0x" << addr << " & " << std::dec;
+*/
             // Pop the access timestamp.
             in_cache[addr]->pop_front();
 
-            if (accessed[addr]) 
+            if (accessed[addr]) {
               set_processing[i].miss_or_hit = 1; 
+/*
+              if (set_processing[i].set == 100) 
+                std::cout << set_processing[i].miss_or_hit << " & ";
+*/
+            }
             else {
               set_processing[i].miss_or_hit = 0;
               accessed[addr] = true;
+/*
+              if (set_processing[i].set == 100) 
+                std::cout << set_processing[i].miss_or_hit << " & ";
+*/
             }
 
             if (in_cache[addr]->size() == 0) {
@@ -251,6 +264,10 @@ void spp_l3::SPP_ORACLE::file_read() {
               for (size_t k = i + 1; k < set_processing.size(); k++) {
                 if (in_cache.find(set_processing[k].addr) == in_cache.end()) {
                   min_addr = set_processing[k].addr;
+/*
+                  if (set_processing[k].set == 100) 
+                    std::cout << " 0x" << std::hex << min_addr << std::dec << " & " << not_in_cache[min_addr]->front();
+*/
                   break;
                 }   
               }
@@ -274,12 +291,22 @@ void spp_l3::SPP_ORACLE::file_read() {
 
                 if (it->second->front() < it_in_cache->second->front() ||
                     max_in_cache->second->front() > it->second->front()) {
+/*
+                  if (set_processing[i].set == 100) 
+                    std::cout << " & Y"; 
+*/
                   not_in_cache[max_in_cache->first] = max_in_cache->second;
                   in_cache[it->first] = it->second;
                   accessed.erase(max_in_cache->first);
                   in_cache.erase(max_in_cache->first);
                   accessed[it->first] = false;
                   not_in_cache.erase(it->first);
+/*
+                }
+                else {
+                  if (set_processing[i].set == 100) 
+                    std::cout << " & N"; 
+*/
                 }
               }
               else 
@@ -292,6 +319,14 @@ void spp_l3::SPP_ORACLE::file_read() {
           // The block is not in the cache.
           else 
             assert(false);
+/*
+          if (set_processing[i].set == 100) {
+            for(auto var : in_cache) 
+              std::cout << std::hex << " & 0x" << var.first << std::dec << " & " << var.second->front();
+
+            std::cout << " \\\\" << std::endl;
+          }
+*/
         }
 
         for(auto &acc : readin) {

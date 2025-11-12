@@ -361,7 +361,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   }
   */
 
-  const auto hit = !L1D_name.compare(NAME) ? true : (way != set_end); // WL
+  const auto hit = !LLC_name.compare(NAME) ? true : (way != set_end); // WL
   //const auto hit = (way != set_end); // WL
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
@@ -386,7 +386,7 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     // update replacement policy
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
 
-    if (L1D_name.compare(NAME)) { // WL
+    if (LLC_name.compare(NAME)) { // WL
       impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0,
                                     champsim::to_underlying(handle_pkt.type), true);
     } // WL

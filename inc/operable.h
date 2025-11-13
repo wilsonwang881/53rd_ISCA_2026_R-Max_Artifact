@@ -132,7 +132,7 @@ public:
   const std::string ITLB_name = "cpu0_ITLB";
   const std::string STLB_name = "cpu0_STLB";
   const std::string ORACLE_at = L1D_name;
-  const std::string ORACLE_at_2nd = L2C_name;
+  const std::string ORACLE_at_2nd = L1I_name;
 
   static std::vector<std::string> emptied_cache;
 

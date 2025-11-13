@@ -10,6 +10,8 @@ namespace {
   std::map<unique_key, spp_l2::prefetcher> SPP_L2;
 }
 
+void CACHE::prefetcher_branch_operate(uint64_t ip, uint8_t branch_type, uint64_t branch_target) {}
+
 void CACHE::prefetcher_initialize() {
   std::cout << "Oracle initialized at " << this->NAME << std::endl;
 

@@ -26,11 +26,6 @@ enum class Q_TYPE {
   INFLIGHT_WRITES
 };
 
-enum class CHECK_QUEUE {
-  BKP_Q,
-  PQ
-};
-
 namespace spp_l3 {
   class prefetcher
   {

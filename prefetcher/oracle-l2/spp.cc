@@ -298,7 +298,6 @@ bool spp_l3::prefetcher::search_do_not_fill_qs(CACHE* cache, std::deque<uint64_t
          }) != q.end();
 }
 
-
 void spp_l3::prefetcher::rollback_op(CACHE* cache, uint64_t addr, uint8_t type, std::deque<SPP_ORACLE::acc_timestamp>::iterator search, std::deque<SPP_ORACLE::acc_timestamp> &q, bool bkp_q, std::string debug_info) {
   uint64_t set = oracle.calc_set(addr);
 

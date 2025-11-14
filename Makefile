@@ -1,7 +1,7 @@
 ROOT_DIR = $(patsubst %/,%,$(dir $(abspath $(firstword $(MAKEFILE_LIST)))))
 
-CPPFLAGS += -MMD -I$(ROOT_DIR)/inc
-CXXFLAGS += --std=c++17 -O3 -g -Wall -Wextra -Wshadow -Wpedantic
+CPPFLAGS += -MMD -I$(ROOT_DIR)/inc -fopenmp
+CXXFLAGS += --std=c++17 -O3 -g -Wall -Wextra -Wshadow -Wpedantic -fopenmp
 
 # vcpkg integration
 TRIPLET_DIR = $(patsubst %/,%,$(firstword $(filter-out $(ROOT_DIR)/vcpkg_installed/vcpkg/, $(wildcard $(ROOT_DIR)/vcpkg_installed/*/))))

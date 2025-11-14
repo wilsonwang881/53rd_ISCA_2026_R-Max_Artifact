@@ -27,13 +27,13 @@ namespace spp_l3 {
     constexpr static bool BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE = true;
     constexpr static bool REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE = false;
     constexpr static int MEMORY_USAGE_REDUCTION_FACTOR = 16;
-    std::string L2C_PHY_ACC_FILE_NAME = "L3C_phy_acc.txt";
+    std::string L2C_PHY_ACC_FILE_NAME = "L2C_phy_acc.txt";
     std::fstream rec_file;
 
     public:
     constexpr static bool ROLLBACK_ENABLED = true;
     const static int SET_NUM = 2048;
-    const static int WAY_NUM = 24;
+    const static int WAY_NUM = 10;
     bool ORACLE_ACTIVE = true;
     uint64_t new_misses = 0;
     uint64_t runahead_hits = 0;

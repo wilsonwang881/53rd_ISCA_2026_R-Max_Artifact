@@ -186,6 +186,7 @@ void spp_l3::SPP_ORACLE::file_read() {
         std::map<uint64_t, std::deque<uint64_t>*> not_in_cache;
         std::map<uint64_t, std::deque<uint64_t>*> in_cache;
         std::map<uint64_t, bool> accessed;
+        uint64_t not_in_cache_start_index = 0;
 
         // Gather timestamps for each address.
         for(auto el : set_processing) {
@@ -207,6 +208,7 @@ void spp_l3::SPP_ORACLE::file_read() {
           in_cache[it->first] = not_in_cache[it->first];
           accessed[it->first] = false;
           not_in_cache.erase(it->first);
+          not_in_cache_start_index = i;
         }
 
         for (uint64_t i = 0; i < set_processing.size(); i++) {
@@ -247,9 +249,10 @@ void spp_l3::SPP_ORACLE::file_read() {
             if (not_in_cache.size() > 0) {
               uint64_t min_addr = 0;
 
-              for (size_t k = i + 1; k < set_processing.size(); k++) {
+              for (size_t k = not_in_cache_start_index; k < set_processing.size(); k++) {
                 if (in_cache.find(set_processing[k].addr) == in_cache.end()) {
                   min_addr = set_processing[k].addr;
+                  not_in_cache_start_index = k;
                   break;
                 }   
               }
@@ -265,13 +268,15 @@ void spp_l3::SPP_ORACLE::file_read() {
               // No space available.
               // May need replacement.
               else if (in_cache.size() == WAY_NUM) {
+                /*
                 auto it_in_cache = std::min_element(std::begin(in_cache), std::end(in_cache),
                                    [](const auto& l, const auto& r) { return l.second->front() < r.second->front(); }); 
+                                   */
                 
                 auto max_in_cache = std::max_element(std::begin(in_cache), std::end(in_cache),
                                     [](const auto& l, const auto& r) { return l.second->front() < r.second->front(); }); 
 
-                if (it->second->front() < it_in_cache->second->front() ||
+                if (//it->second->front() < it_in_cache->second->front() ||
                     max_in_cache->second->front() > it->second->front()) {
                   not_in_cache[max_in_cache->first] = max_in_cache->second;
                   in_cache[it->first] = it->second;

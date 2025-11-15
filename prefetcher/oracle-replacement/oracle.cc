@@ -130,73 +130,63 @@ omp_set_num_threads(1);
         } 
 
         // Use the optimal cache replacement policy to work out hit/miss for each access.
-        std::vector<acc_timestamp> set_container;
+        std::map<uint64_t, std::deque<uint64_t>*> not_in_cache;
+        std::map<uint64_t, std::deque<uint64_t>*> in_cache;
+
+        // Gather timestamps for each address.
+        for(auto el : set_processing) {
+          auto search = not_in_cache.find(el.addr); 
+
+          if (search == not_in_cache.end()) 
+            not_in_cache[el.addr] = new std::deque<uint64_t>();
+
+          not_in_cache[el.addr]->push_back(el.cycle_demanded); 
+        }
 
         for (uint64_t i = 0; i < set_processing.size(); i++) {
-          bool found = false;
+          uint64_t addr = set_processing[i].addr;
 
-          for(auto &blk : set_container) {
-            if (blk.addr == set_processing[i].addr) {
-              found = true;
-              blk.cycle_demanded = set_processing[i].cycle_demanded;
-              break;
-            } 
-          }
+          // Check if the block is already in cache.
+          auto block_in_cache = in_cache.find(addr);
 
-          // The set has the block.
-          if (found) 
+          // If the block is in cache.
+          if (block_in_cache != in_cache.end()) {
+            // Pop the access timestamp.
+            in_cache[addr]->pop_front();
             set_processing[i].miss_or_hit = 1; 
-          // The set does not have the block.
-          else {
-            // The set has space.
-            if (set_container.size() < WAY_NUM) {
-              // Update the set.
-              set_container.push_back(set_processing[i]);
 
-              // Set the new block to be a miss.
-              set_processing[i].miss_or_hit = 0;
+            if (in_cache[addr]->size() == 0) {
+              delete in_cache[addr];
+              in_cache[addr] = nullptr;
+              in_cache.erase(addr); 
+            }
+          }
+          else {
+            set_processing[i].miss_or_hit = 0;
+
+            // The set has space.
+            if (in_cache.size() < WAY_NUM) {
+              // Update the set.
+              in_cache[addr] = not_in_cache[addr];
+              not_in_cache.erase(addr);
 
               // Safety check.
-              assert(set_container.size() <= WAY_NUM);
+              assert(in_cache.size() <= WAY_NUM);
             }
             // The set has no space.
             else {
               // Calculate the re-use distance.
-              for(auto &el : set_container) {
-                uint64_t distance = std::numeric_limits<uint64_t>::max(); 
-
-                for(uint64_t j = i + 1; j < set_processing.size(); j++) { 
-                  if (set_processing[j].addr == el.addr) {
-                    distance = set_processing[j].cycle_demanded; 
-                    break; 
-                  }  
-                }
-
-                el.reuse_dist_lst_timestmp = distance;
-              }
+              auto it_in_cache = std::max_element(std::begin(in_cache), std::end(in_cache),
+                                   [](const auto& l, const auto& r) { return l.second->front() < r.second->front(); }); 
 
               // Evict the block with the longest reuse distance.
-              uint64_t reuse_distance = set_container[0].reuse_dist_lst_timestmp;
-              uint64_t eviction_candidate = 0;
-
-              for (uint64_t j = 0; j < WAY_NUM; j++) {
-                if (set_container[j].reuse_dist_lst_timestmp >= reuse_distance) {
-                  reuse_distance = set_container[j].reuse_dist_lst_timestmp;
-                  eviction_candidate = j; 
-                }
-              }
-
-              // Evict the block.
-              set_container.erase(set_container.begin() + eviction_candidate);
-
-              // Set the new block to be a miss.
-              set_processing[i].miss_or_hit = 0;
-
-              // Update the set.
-              set_container.push_back(set_processing[i]);
+              not_in_cache[it_in_cache->first] = in_cache[it_in_cache->first];
+              in_cache.erase(it_in_cache->first);
+              in_cache[addr] = not_in_cache[addr];
+              not_in_cache.erase(addr);
 
               // Safety check.
-              assert(set_container.size() <= WAY_NUM);
+              assert(in_cache.size() <= WAY_NUM);
             }
           }
         }

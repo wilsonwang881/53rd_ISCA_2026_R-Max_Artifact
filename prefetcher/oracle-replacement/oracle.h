@@ -18,6 +18,7 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "cache.h"
+#include <omp.h>
 
 namespace spp_l3 {
 

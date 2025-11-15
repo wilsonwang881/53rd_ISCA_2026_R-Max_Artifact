@@ -40,7 +40,6 @@ void spp_l3::SPP_ORACLE::file_write() {
     access.clear();
   } 
 }
-
 void spp_l3::SPP_ORACLE::file_read() {
   acc_timestamp tmpp;
   std::cout << "Parsing memory accesses" << std::endl;
@@ -53,17 +52,48 @@ void spp_l3::SPP_ORACLE::file_read() {
     std::cout << "LRU cache replacement policy active." << std::endl;
 
   uint64_t total_mem_acc = 0;
+  omp_lock_t lock;
+  omp_init_lock(&lock);
 
+  std::fstream rec_file_t;
+  rec_file_t.open(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
+  uint64_t readin_cycle_demanded, readin_addr, readin_miss_or_hit;
+  uint64_t type;
+  std::deque<acc_timestamp> readin_t;
+
+  while(!rec_file_t.eof()) {
+    rec_file_t >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type;
+    tmpp.cycle_demanded = readin_cycle_demanded;
+    tmpp.addr = (readin_addr >> 6) << 6;
+    tmpp.set = calc_set(tmpp.addr);   
+    tmpp.miss_or_hit = readin_miss_or_hit;
+    tmpp.type = type;
+
+    if (readin_addr == 0)
+      break; 
+
+    readin_t.push_back(tmpp);
+  }
+
+  rec_file_t.close();
+
+omp_set_num_threads(1);
+#pragma omp parallel for
   for (int set_partition = 0; set_partition < MEMORY_USAGE_REDUCTION_FACTOR; set_partition++) {
     int set_number_begin = SET_NUM / MEMORY_USAGE_REDUCTION_FACTOR * set_partition;
     int set_number_end = SET_NUM / MEMORY_USAGE_REDUCTION_FACTOR * (set_partition + 1);
-    rec_file.open(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
+
+    /*
+    std::fstream rec_file_t;
+    rec_file_t.open(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
     uint64_t readin_cycle_demanded, readin_addr, readin_miss_or_hit;
     uint64_t type;
+    */
     std::deque<acc_timestamp> readin;
 
-    while(!rec_file.eof()) {
-      rec_file >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type;
+    /*
+    while(!rec_file_t.eof()) {
+      rec_file_t >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type;
       tmpp.cycle_demanded = readin_cycle_demanded;
       tmpp.addr = (readin_addr >> 6) << 6;
       tmpp.set = calc_set(tmpp.addr);   
@@ -76,10 +106,18 @@ void spp_l3::SPP_ORACLE::file_read() {
       if (tmpp.set >= set_number_begin && tmpp.set < set_number_end) 
         readin.push_back(tmpp);
     }
+    */
 
-    rec_file.close();
+    for(auto var : readin_t) {
+      if (var.set >= set_number_begin && var.set < set_number_end) 
+        readin.push_back(var);
+    }
+
+    //rec_file_t.close();
     std::cout << "Oracle: read " << readin.size() << " accesses from file for set " << set_number_begin << " to set " << (set_number_end - 1) << std::endl;
+    omp_set_lock(&lock);
     total_mem_acc += readin.size();
+    omp_unset_lock(&lock);
 
     if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) {
       for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
@@ -222,8 +260,9 @@ void spp_l3::SPP_ORACLE::file_read() {
             // Pop the access timestamp.
             in_cache[addr]->pop_front();
 
-            if (accessed[addr]) 
+            if (accessed[addr]) {
               set_processing[i].miss_or_hit = 1; 
+            }
             else {
               set_processing[i].miss_or_hit = 0;
               accessed[addr] = true;
@@ -236,20 +275,37 @@ void spp_l3::SPP_ORACLE::file_read() {
               accessed.erase(addr);
 
               // Fill the gap.
+              /*
               if (not_in_cache.size() > 0) {
+                uint64_t not_in_cache_tmpp_addr;
+                for (size_t k = not_in_cache_start_index + 1; k < set_processing.size(); k++) { // k start from i + 1
+                  if (in_cache.find(set_processing[k].addr) == in_cache.end()) {
+                    not_in_cache_start_index = k;
+                    not_in_cache_tmpp_addr = set_processing[k].addr;
+                    break;
+                  }   
+                }
+
+                in_cache[not_in_cache_tmpp_addr] = not_in_cache[not_in_cache_tmpp_addr];
+                accessed[not_in_cache_tmpp_addr] = false;
+                not_in_cache.erase(not_in_cache_tmpp_addr);
+
+                //////////////////
                 auto it_gap = std::min_element(std::begin(not_in_cache), std::end(not_in_cache),
                               [](const auto& l, const auto& r) { return l.second->front() < r.second->front(); });
                 in_cache[it_gap->first] = not_in_cache[it_gap->first];
                 accessed[it_gap->first] = false;
                 not_in_cache.erase(it_gap->first);
+                /////////////////
               }
+            */
             }
 
             // Replacement.
             if (not_in_cache.size() > 0) {
               uint64_t min_addr = 0;
 
-              for (size_t k = not_in_cache_start_index; k < set_processing.size(); k++) {
+              for (size_t k = not_in_cache_start_index; k < set_processing.size(); k++) { // k start from i + 1
                 if (in_cache.find(set_processing[k].addr) == in_cache.end()) {
                   min_addr = set_processing[k].addr;
                   not_in_cache_start_index = k;
@@ -294,8 +350,10 @@ void spp_l3::SPP_ORACLE::file_read() {
             }
           }
           // The block is not in the cache.
-          else 
+          else {
+            std::cout << "not_in_cache_start_index " << not_in_cache_start_index << " from thread " << omp_get_thread_num() << std::endl;
             assert(false);
+          }
         }
 
         for(auto &acc : readin) {
@@ -312,6 +370,7 @@ void spp_l3::SPP_ORACLE::file_read() {
     // Use the hashmap to gather accesses.
     std::map<uint64_t, uint32_t> addr_counter_map;
     std::map<uint64_t, uint64_t> addr_timestamp_map;
+    //std::map<uint64_t, std::deque<uint64_t>> addr_times_map;
 
     for (int i = readin.size() - 1; i >= 0; i--) {
       acc_timestamp tmpp_readin = readin[i];
@@ -322,8 +381,10 @@ void spp_l3::SPP_ORACLE::file_read() {
         else {
           addr_counter_map[tmpp_readin.addr] = 1;
           addr_timestamp_map[tmpp_readin.addr] = tmpp_readin.cycle_demanded;
+          //addr_times_map[tmpp_readin.addr].clear(); 
         }
 
+        //addr_times_map[tmpp_readin.addr].push_front(tmpp_readin.cycle_demanded);
         tmpp_readin.miss_or_hit = 0;
         readin[i].miss_or_hit = 0;
       }
@@ -333,8 +394,12 @@ void spp_l3::SPP_ORACLE::file_read() {
         else {
           addr_counter_map[tmpp_readin.addr] = 1;
           addr_timestamp_map[tmpp_readin.addr] = readin[i].cycle_demanded;
+          //addr_times_map[tmpp_readin.addr].clear(); 
         }
 
+
+        //addr_times_map[tmpp_readin.addr].push_front(tmpp_readin.cycle_demanded);
+        //readin[i].times = addr_times_map[tmpp_readin.addr];
         readin[i].miss_or_hit = addr_counter_map[tmpp_readin.addr];
         readin[i].reuse_dist_lst_timestmp = addr_timestamp_map[tmpp_readin.addr];
         addr_counter_map.erase(tmpp_readin.addr);
@@ -343,12 +408,17 @@ void spp_l3::SPP_ORACLE::file_read() {
     }
 
     for(auto var : readin) {
-      if (var.miss_or_hit != 0) 
+      if (var.miss_or_hit != 0) {
+        omp_set_lock(&lock);
         oracle_pf[var.set].push_back(var); 
+        omp_unset_lock(&lock);
+      }
     }
 
     std::cout << "Done updating hits/misses for set " << set_number_begin << " to set " << (set_number_end - 1) << std::endl;
   }
+
+  omp_destroy_lock(&lock);
 
   oracle_pf_size = 0;
 
@@ -359,7 +429,7 @@ void spp_l3::SPP_ORACLE::file_read() {
 
   for(auto set_pf: oracle_pf) {
     for(auto var : set_pf) {
-      if (var.type == 3) 
+      if (var.type == 3 ) // || var.type== 1
         non_pf_counter++; 
     }
   }

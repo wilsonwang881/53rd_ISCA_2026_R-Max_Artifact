@@ -209,16 +209,6 @@ omp_set_num_threads(1);
         }
 
         assert(set_processing.size() == 0);
-
-        for (auto &pair : not_in_cache)
-          delete pair.second;
-
-        not_in_cache.clear();
-
-        for (auto &pair : in_cache)
-          delete pair.second;
-
-        in_cache.clear();
       }
     }
     else if (REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE) {

@@ -170,6 +170,14 @@ omp_set_num_threads(1);
               in_cache[addr] = not_in_cache[addr];
               not_in_cache.erase(addr);
 
+              in_cache[addr]->pop_front();
+
+              if (in_cache[addr]->size() == 0) {
+                delete in_cache[addr];
+                in_cache[addr] = nullptr;
+                in_cache.erase(addr); 
+              }
+
               // Safety check.
               assert(in_cache.size() <= WAY_NUM);
             }
@@ -184,6 +192,14 @@ omp_set_num_threads(1);
               in_cache.erase(it_in_cache->first);
               in_cache[addr] = not_in_cache[addr];
               not_in_cache.erase(addr);
+
+              in_cache[addr]->pop_front();
+              
+              if (in_cache[addr]->size() == 0) {
+                delete in_cache[addr];
+                in_cache[addr] = nullptr;
+                in_cache.erase(addr); 
+              }
 
               // Safety check.
               assert(in_cache.size() <= WAY_NUM);

@@ -15,6 +15,8 @@ void CACHE::prefetcher_initialize() {
 
   auto &pref = ::SPP_L3[{this, cpu}];
 
+  pref.occupancy_info_file.open(pref.occupancy_info, std::ofstream::app);
+
   if (pref.oracle.ORACLE_ACTIVE) {
     pref.oracle.init();
     pref.call_poll(this);

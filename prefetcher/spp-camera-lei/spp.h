@@ -74,6 +74,17 @@ namespace spp {
     // WL 
     bool context_switch_prefetch_gathered = false;
     std::ofstream prefetcher_state_file;
+
+    struct PF {
+      uint64_t addr;
+      uint64_t cycle;
+    };
+
+    std::string PF_ADDR_FILE_NAME = "pf_acc.txt";
+    std::fstream pf_acc_file;
+    std::deque<struct PF> pf_acc;
+    uint64_t PF_ACC_THRESHOLD_LENGTH = 100000;
+
     uint64_t cache_cycle;
 
     void clear_states();

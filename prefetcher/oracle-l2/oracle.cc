@@ -434,6 +434,42 @@ omp_set_num_threads(1);
 
   oracle_pf_size = 0;
 
+  if (PF_ACC_COMPARE_ENABLED) {
+    std::map<uint64_t, std::bitset<64>> prefetchable;
+
+    pf_acc_file.open(PF_ACC_FILE_NAME, std::ifstream::in);
+    uint64_t cycle, addr, page, blk;
+
+    while (!pf_acc_file.eof()) {
+      pf_acc_file >> cycle >> addr;
+      page = addr >> 12;
+      blk = (addr & 0xFFF) >> 6;
+      prefetchable[page].set(blk);
+    }
+
+    pf_acc_file.close();
+
+    for(auto& set_pf : oracle_pf) {
+      for(auto& var : set_pf) {
+        page = var.addr >> 12;
+        blk = (var.addr & 0xFFF) >> 6;
+        if (prefetchable.find(page) != prefetchable.end() && prefetchable[page].test(blk)) {
+          var.type = 0;
+        } 
+        else 
+          var.type = 3;
+      }
+    }
+
+    uint64_t prefetchable_total = 0;
+
+    for(auto [key, val]: prefetchable) 
+      prefetchable_total += val.count();  
+
+    std::cout << "Prefetches available in " << prefetchable.size() << " pages with a total of " << prefetchable_total << " prefetches." << std::endl;
+
+  }
+
   for(auto var : oracle_pf) 
     oracle_pf_size += var.size(); 
 
@@ -577,7 +613,10 @@ std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> spp_l3::SPP_ORACLE::poll
           set_availability[set]--;
 
         if (ite->type == 3) { 
-          std::get<3>(target) = false;
+          if (PF_ACC_COMPARE_ENABLED)
+            std::get<3>(target) = true;
+          else 
+            std::get<3>(target) = false;
 
           if (ORACLE_DEBUG_PRINT) 
             std::cout << "Skipping addr " << ite->addr << " type " << (unsigned)ite->type << std::endl;

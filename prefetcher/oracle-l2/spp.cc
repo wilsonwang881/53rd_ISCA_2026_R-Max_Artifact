@@ -15,6 +15,8 @@ namespace {
 uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
   uint64_t res = 0;
 
+restart:
+
   if (!pending_pf_q.empty()) {
 
     auto mshr_occupancy = cache->get_mshr_occupancy();
@@ -55,6 +57,11 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
         if (prefetched) {
           pending_pf_q.pop_front();
 
+          /*
+          if (cache->current_cycle % 100 == 0)
+            occupancy_info_file << pending_pf_q.size() << " " << cache->current_cycle << std::endl;
+          */
+
           if (pending_pf_q.size() % 100000 == 0) 
             pending_pf_q.shrink_to_fit();
 
@@ -92,6 +99,8 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
           << " at cycle " << cache->current_cycle << " MSHR usage: " 
           << mshr_occupancy << " queue size " << pending_pf_q.size() 
           << " wq " << wq_occupancy << " rq " << rq_occupancy << std::endl;
+
+      goto restart;
     }
   }
 

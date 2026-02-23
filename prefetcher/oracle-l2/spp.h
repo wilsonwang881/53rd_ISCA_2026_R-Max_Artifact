@@ -40,6 +40,9 @@ namespace spp_l3 {
     uint64_t issued_cs_pf_hit;
     uint64_t total_issued_cs_pf;
 
+    std::string occupancy_info = "occupancy.txt";
+    std::fstream occupancy_info_file;
+
     uint64_t issue(CACHE* cache);
     void call_poll(CACHE* cache);
     void erase_duplicate_entry_in_ready_queue(CACHE* cache, uint64_t addr);

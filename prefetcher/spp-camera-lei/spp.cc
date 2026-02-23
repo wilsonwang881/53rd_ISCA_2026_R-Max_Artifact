@@ -93,6 +93,21 @@ void spp::prefetcher::issue(CACHE* cache)
     // If this fails, the queue was full.
     bool prefetched = cache->prefetch_line(addr, priority, 0);
     if (prefetched) {
+      // WL: for recording issued SPP prefetches 
+      struct PF pf{addr, cache->current_cycle};
+      pf_acc.push_back(pf);
+
+      if (pf_acc.size() > PF_ACC_THRESHOLD_LENGTH) {
+        pf_acc_file.open(PF_ADDR_FILE_NAME, std::ofstream::app);
+
+        for(auto var : pf_acc) 
+          pf_acc_file << var.cycle << " " << var.addr << std::endl;
+
+        pf_acc.clear();
+        pf_acc_file.close();
+      }
+      // WL
+
       filter.update_issue(addr, cache->get_set(addr));
       issue_queue.pop_front();
 

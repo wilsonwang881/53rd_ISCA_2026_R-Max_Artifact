@@ -19,6 +19,10 @@ void CACHE::prefetcher_initialize() {
 
   auto &pref = ::SPP[{this, cpu}];
   pref.prefetcher_state_file.open("prefetcher_states.txt", std::ios::out);
+
+  // Clear the file that records issued prefetches.
+  pref.pf_acc_file.open(pref.PF_ADDR_FILE_NAME, std::ios::out | std::ios::trunc);
+  pref.pf_acc_file.close();
 }
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) {
@@ -131,6 +135,15 @@ void CACHE::prefetcher_final_stats() {
   auto &pref = ::SPP[{this, cpu}];
   pref.print_stats(std::cout);
   std::cout << "Context switch prefetch accuracy: " << pref.page_bitmap.issued_cs_pf_hit << "/" << pref.page_bitmap.total_issued_cs_pf << "." << std::endl;
+
+  // WL
+  pref.pf_acc_file.open(pref.PF_ADDR_FILE_NAME, std::ofstream::app);
+
+  for(auto var : pref.pf_acc) 
+    pref.pf_acc_file << var.cycle << " " << var.addr << std::endl;
+
+  pref.pf_acc_file.close();
+  // WL
 }
 
 // WL

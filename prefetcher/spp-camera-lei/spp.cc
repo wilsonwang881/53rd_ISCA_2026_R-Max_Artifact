@@ -41,6 +41,7 @@ namespace {
 
 void spp::prefetcher::issue(CACHE* cache)
 {
+  /*
   // WL: issue context switch prefetches first 
   uint64_t curr_pg = curr_addr >> 12;
 
@@ -50,14 +51,12 @@ void spp::prefetcher::issue(CACHE* cache)
     //if (q_occupancy[2] <= 16) {
     std::vector<uint64_t> to_remove;
 
-    /*
-    int8_t group;
+    //int8_t group;
 
-    for (auto var : available_prefetches[curr_pg]) {
-      if(std::get<0>(var) == curr_addr)
-        group = std::get<2>(var);
-    }
-    */
+    //for (auto var : available_prefetches[curr_pg]) {
+      //if(std::get<0>(var) == curr_addr)
+        //group = std::get<2>(var);
+    //}
 
     //auto it = available_prefetches[curr_pg].begin();
     //for(auto it = available_prefetches[curr_pg].begin(); it != available_prefetches[curr_pg].end(); ++it) {
@@ -84,6 +83,7 @@ void spp::prefetcher::issue(CACHE* cache)
         available_prefetches[curr_pg].pop_front(); //erase(available_prefetches[curr_pg].begin() + var); 
     }
   }
+*/
   // WL 
 
   // Issue eligible outstanding prefetches
@@ -93,18 +93,24 @@ void spp::prefetcher::issue(CACHE* cache)
     // If this fails, the queue was full.
     bool prefetched = cache->prefetch_line(addr, priority, 0);
     if (prefetched) {
+
       // WL: for recording issued SPP prefetches 
-      struct PF pf{addr, cache->current_cycle};
-      pf_acc.push_back(pf);
+      if (priority) {
+        struct PF pf{addr, cache->current_cycle};
+        pf_acc.push_back(pf);
 
-      if (pf_acc.size() > PF_ACC_THRESHOLD_LENGTH) {
-        pf_acc_file.open(PF_ADDR_FILE_NAME, std::ofstream::app);
+        if (pf_acc.size() > PF_ACC_THRESHOLD_LENGTH) {
+          pf_acc_file.open(PF_ADDR_FILE_NAME, std::ofstream::app);
 
-        for(auto var : pf_acc) 
-          pf_acc_file << var.cycle << " " << var.addr << std::endl;
+          for(auto var : pf_acc) 
+            pf_acc_file << var.cycle << " " << var.addr << std::endl;
 
-        pf_acc.clear();
-        pf_acc_file.close();
+          pf_acc.clear();
+          pf_acc_file.close();
+        }
+      }
+      else {
+        printf("Issued to L3");
       }
       // WL
 

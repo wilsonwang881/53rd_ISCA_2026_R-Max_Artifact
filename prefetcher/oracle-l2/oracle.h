@@ -26,8 +26,8 @@ namespace spp_l3 {
   class SPP_ORACLE {
     constexpr static uint64_t ACCESS_LEN = 100000;
     constexpr static bool ORACLE_DEBUG_PRINT = false;
-    constexpr static bool BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE = false;
-    constexpr static bool REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE = true;
+    constexpr static bool BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE = true;
+    constexpr static bool REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE = false;
     constexpr static int MEMORY_USAGE_REDUCTION_FACTOR = 32;
     std::string L2C_PHY_ACC_FILE_NAME = "L2C_phy_acc.txt";
     std::fstream rec_file;

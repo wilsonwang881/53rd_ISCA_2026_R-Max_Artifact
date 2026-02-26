@@ -15,7 +15,7 @@ namespace {
 uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
   uint64_t res = 0;
 
-restart:
+//restart:
 
   if (!pending_pf_q.empty()) {
 
@@ -88,7 +88,9 @@ restart:
     }
     else if (RFO_write) {
       res = 0;
-      pending_pf_q.pop_front();
+
+      if (!oracle.PF_ACC_COMPARE_ENABLED) 
+        pending_pf_q.pop_front();
 
       if (pending_pf_q.size() % 100000 == 0) 
         pending_pf_q.shrink_to_fit();
@@ -100,7 +102,7 @@ restart:
           << mshr_occupancy << " queue size " << pending_pf_q.size() 
           << " wq " << wq_occupancy << " rq " << rq_occupancy << std::endl;
 
-      goto restart;
+      //goto restart;
     }
   }
 

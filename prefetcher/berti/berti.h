@@ -221,7 +221,43 @@ namespace berti_space
       void add(uint64_t tag, int64_t delta);
   
     public:
-      Berti(uint64_t p_size) : size(p_size) {};
+      // WL
+      std::ofstream prefetcher_state_file;
+
+      struct PF {
+        uint64_t addr;
+        uint64_t cycle;
+      };
+
+      struct ACC {
+        uint64_t addr;
+        uint64_t cycle;
+        bool hit_or_miss;
+        uint64_t type;
+      };
+
+      std::string PF_ADDR_FILE_NAME = "pf_acc.txt";
+      std::fstream pf_acc_file;
+      std::string CACHE_ACC_FILE_NAME = "cache_acc.txt";
+      std::fstream cache_acc_file;
+      std::deque<struct PF> pf_acc;
+      std::deque<struct ACC> cache_acc;
+
+      uint64_t PF_ACC_THRESHOLD_LENGTH = 100000;
+      // WL
+
+      Berti(uint64_t p_size) : size(p_size) {
+        // WL
+        prefetcher_state_file.open("prefetcher_states.txt", std::ios::out);
+
+        // Clear the file that records issued prefetches.
+        pf_acc_file.open(PF_ADDR_FILE_NAME, std::ios::out | std::ios::trunc);
+        pf_acc_file.close();
+
+        cache_acc_file.open(CACHE_ACC_FILE_NAME, std::ios::out | std::ios::trunc);
+        cache_acc_file.close();
+        // WL
+      };
       void find_and_update(uint64_t latency, uint64_t tag, uint64_t cycle, 
           uint64_t line_addr);
       uint8_t get(uint64_t tag, std::vector<delta_t> &res);

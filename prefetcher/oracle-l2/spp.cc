@@ -22,7 +22,17 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
     auto mshr_occupancy = cache->get_mshr_occupancy();
     auto rq_occupancy = cache->get_rq_occupancy().back();
     auto wq_occupancy = cache->get_wq_occupancy().back();
-    auto [addr, cycle, priority, RFO_write] = pending_pf_q.front();
+
+    size_t erase_pos = 0;
+
+    for (size_t i = 0; i < pending_pf_q.size(); i++) {
+      if (!std::get<3>(pending_pf_q[i])) {
+        erase_pos = i;
+        break;
+      } 
+    }
+
+    auto [addr, cycle, priority, RFO_write] = pending_pf_q[erase_pos];
     uint64_t set = (addr >> 6) & champsim::bitmask(champsim::lg2(cache->NUM_SET));
     uint64_t way = cache->get_way(addr, set);
     auto search_mshr = std::find_if(std::begin(cache->MSHR), std::end(cache->MSHR),
@@ -44,18 +54,31 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
         << " rq " << rq_occupancy << std::endl;
 
       assert(remaining_acc != -1);
-      pending_pf_q.pop_front();
+      pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
+
       return 0;
     }
 
-
-    if (!RFO_write && mshr_occupancy < cache->get_mshr_size())  { 
+    if (!RFO_write && mshr_occupancy < cache->get_mshr_size() && ((cache->get_mshr_size() - mshr_occupancy) > erase_pos))  { 
       if (way == cache->NUM_WAY && search_mshr == cache->MSHR.end() && search_inflight_writes == cache->inflight_writes.end()) {
         res = addr;
         bool prefetched = cache->prefetch_line(addr, priority, 0, 0);
 
         if (prefetched) {
-          pending_pf_q.pop_front();
+          pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
+
+          struct PF pf{addr, cache->current_cycle};
+          pf_acc.push_back(pf);
+
+          if (pf_acc.size() > PF_ACC_THRESHOLD_LENGTH) {
+            pf_acc_file.open(PF_ADDR_FILE_NAME, std::ofstream::app);
+
+            for(auto var : pf_acc) 
+              pf_acc_file << var.cycle << " " << var.addr << std::endl;
+
+            pf_acc.clear();
+            pf_acc_file.close();
+          }
 
           /*
           if (cache->current_cycle % 100 == 0)
@@ -77,7 +100,7 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
         }
       }
       else {
-        pending_pf_q.pop_front();
+        pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
         champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
 
         res = 0;
@@ -90,7 +113,7 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
       res = 0;
 
       if (!oracle.PF_ACC_COMPARE_ENABLED) 
-        pending_pf_q.pop_front();
+        pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
 
       if (pending_pf_q.size() % 100000 == 0) 
         pending_pf_q.shrink_to_fit();

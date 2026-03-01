@@ -59,10 +59,11 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   bool found_in_ready_queue = false;
   bool found_in_not_ready_queue = false;
   bool not_found_hit = false;
+  bool search_mshr = false;
 
   if (pref.oracle.ORACLE_ACTIVE && !cache_hit) {
     bool found_in_pending_queue = false;
-    bool search_mshr = pref.search_MSHR_inflight_writes(this, Q_TYPE::MSHR, base_addr); 
+    search_mshr = pref.search_MSHR_inflight_writes(this, Q_TYPE::MSHR, base_addr); 
     bool search_inflight_writes = pref.search_MSHR_inflight_writes(this, Q_TYPE::INFLIGHT_WRITES, base_addr);
 
     if (search_mshr || search_inflight_writes) {
@@ -425,7 +426,14 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   else 
     assert(cache_hit);
 
-  pref.oracle.update_demand(this->current_cycle, base_addr, useful_prefetch ? 0 : cache_hit, type);
+  if (!cache_hit) 
+    search_mshr = std::find_if(std::begin(MSHR), std::end(MSHR),
+       [match = base_addr >> OFFSET_BITS, shamt = OFFSET_BITS]
+       (const auto& entry) {
+         return (entry.address >> shamt) == match && entry.type == access_type::PREFETCH; 
+       }) != MSHR.end();
+
+  pref.oracle.update_demand(this->current_cycle, base_addr, useful_prefetch ? 1 : search_mshr, type);
 
   uint64_t way = this->get_way(base_addr, set);
 

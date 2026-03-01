@@ -16,6 +16,24 @@ void spp_l3::SPP_ORACLE::init() {
   file_read();
 }
 
+void spp_l3::SPP_ORACLE::load_translations() {
+  std::cout << "Reading vmem mapping for translating prefetches issued in virtual space to physical space." << std::endl;
+
+  uint32_t cpu_num; 
+  uint64_t vaddr_shifted; 
+  uint64_t nxt_pg;
+
+  va_to_pa_file.open(va_to_pa_file_name, std::ifstream::in);
+  fr_vpage_to_ppage_map.clear();
+
+  while(!va_to_pa_file.eof()) {
+    va_to_pa_file >> cpu_num >> vaddr_shifted >> nxt_pg;
+    fr_vpage_to_ppage_map.insert({{cpu_num, vaddr_shifted}, nxt_pg});
+  }
+
+  va_to_pa_file.close();
+}
+
 void spp_l3::SPP_ORACLE::update_demand(uint64_t cycle, uint64_t addr, bool hit, uint64_t type) {
   acc_timestamp tmpp;
   tmpp.cycle_demanded = cycle;
@@ -45,6 +63,9 @@ void spp_l3::SPP_ORACLE::file_write() {
 void spp_l3::SPP_ORACLE::file_read() {
   acc_timestamp tmpp;
   std::cout << "Parsing memory accesses" << std::endl;
+
+  if (TRANSLATE_PF_ADDR) 
+    load_translations();
 
   if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) 
     std::cout << "Belady's cache replacement policy active." << std::endl;
@@ -409,7 +430,6 @@ omp_set_num_threads(1);
           //addr_times_map[tmpp_readin.addr].clear(); 
         }
 
-
         //addr_times_map[tmpp_readin.addr].push_front(tmpp_readin.cycle_demanded);
         //readin[i].times = addr_times_map[tmpp_readin.addr];
         readin[i].miss_or_hit = addr_counter_map[tmpp_readin.addr];
@@ -435,6 +455,7 @@ omp_set_num_threads(1);
   oracle_pf_size = 0;
 
   if (PF_ACC_COMPARE_ENABLED) {
+    std::cout << "Partial R-Max mode." << std::endl;
     std::map<uint64_t, std::bitset<64>> prefetchable;
 
     pf_acc_file.open(PF_ACC_FILE_NAME, std::ifstream::in);
@@ -444,6 +465,10 @@ omp_set_num_threads(1);
       pf_acc_file >> cycle >> addr;
       page = addr >> 12;
       blk = (addr & 0xFFF) >> 6;
+
+      if (TRANSLATE_PF_ADDR) 
+        page = fr_vpage_to_ppage_map[{0, page}] >> 12;
+
       prefetchable[page].set(blk);
     }
 

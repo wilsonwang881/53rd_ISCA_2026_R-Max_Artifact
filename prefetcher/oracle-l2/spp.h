@@ -43,6 +43,17 @@ namespace spp_l3 {
     std::string occupancy_info = "occupancy.txt";
     std::fstream occupancy_info_file;
 
+    struct PF {
+      uint64_t addr;
+      uint64_t cycle;
+    };
+
+    std::string PF_ADDR_FILE_NAME = "oracle_pf_timing.txt";
+    std::fstream pf_acc_file;
+    std::deque<struct PF> pf_acc;
+    uint64_t PF_ACC_THRESHOLD_LENGTH = 100000;
+
+
     uint64_t issue(CACHE* cache);
     void call_poll(CACHE* cache);
     void erase_duplicate_entry_in_ready_queue(CACHE* cache, uint64_t addr);

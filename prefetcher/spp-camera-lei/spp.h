@@ -80,9 +80,20 @@ namespace spp {
       uint64_t cycle;
     };
 
+    struct ACC {
+      uint64_t addr;
+      uint64_t cycle;
+      bool hit_or_miss;
+      uint64_t type;
+    };
+
     std::string PF_ADDR_FILE_NAME = "pf_acc.txt";
     std::fstream pf_acc_file;
+    std::string CACHE_ACC_FILE_NAME = "cache_acc.txt";
+    std::fstream cache_acc_file;
     std::deque<struct PF> pf_acc;
+    std::deque<struct ACC> cache_acc;
+
     uint64_t PF_ACC_THRESHOLD_LENGTH = 100000;
 
     uint64_t cache_cycle;

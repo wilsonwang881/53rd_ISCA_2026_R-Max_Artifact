@@ -976,6 +976,27 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
                                          uint8_t cache_hit, bool useful_prefetch, 
                                          uint8_t type, uint32_t metadata_in)
 {
+  // WL: for recording issued SPP prefetches 
+  bool search_MSHR = std::find_if(std::begin(MSHR), std::end(MSHR),
+         [match = addr >> OFFSET_BITS, shamt = OFFSET_BITS]
+         (const auto& entry) {
+           return (entry.address >> shamt) == match && entry.type == access_type::PREFETCH; 
+         }) != MSHR.end();
+
+  struct Berti::ACC acc{addr, current_cycle, useful_prefetch ? 1 : search_MSHR, type};
+  berti->cache_acc.push_back(acc);
+
+  if (berti->cache_acc.size() > berti->PF_ACC_THRESHOLD_LENGTH) {
+    berti->cache_acc_file.open(berti->CACHE_ACC_FILE_NAME, std::ofstream::app);
+
+    for(auto var : berti->cache_acc) 
+      berti->cache_acc_file << var.cycle << " " << var.addr << " " << var.hit_or_miss << " " << var.type << std::endl;
+
+    berti->cache_acc.clear();
+    berti->cache_acc_file.close();
+  }
+  // WL
+
   // We select the structures for every cpu
   latencyt = bigPicture[cpu].latencyt;
   scache = bigPicture[cpu].scache;
@@ -1054,6 +1075,21 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
 
     if (prefetch_line(p_addr, fill_this_level, metadata_in))
     {
+      // WL: for recording issued SPP prefetches 
+      struct Berti::PF pf{p_addr, current_cycle};
+      berti->pf_acc.push_back(pf);
+
+      if (berti->pf_acc.size() > berti->PF_ACC_THRESHOLD_LENGTH) {
+        berti->pf_acc_file.open(berti->PF_ADDR_FILE_NAME, std::ofstream::app);
+
+        for(auto var : berti->pf_acc) 
+          berti->pf_acc_file << var.cycle << " " << var.addr << std::endl;
+
+        berti->pf_acc.clear();
+        berti->pf_acc_file.close();
+      }
+      // WL
+
       ++average_issued;
       if (first_issue)
       {
@@ -1156,4 +1192,22 @@ void CACHE::prefetcher_final_stats()
   std::cout << "BERTI";
   std::cout << " AVERAGE_ISSUED: " << ((1.0*average_issued)/average_num);
   std::cout << std::endl;
+
+  // WL
+  berti = bigPicture[cpu].berti;
+  berti->pf_acc_file.open(berti->PF_ADDR_FILE_NAME, std::ofstream::app);
+
+  for(auto var : berti->pf_acc) 
+    berti->pf_acc_file << var.cycle << " " << var.addr << std::endl;
+
+  berti->pf_acc_file.close();
+
+  berti->cache_acc_file.open(berti->CACHE_ACC_FILE_NAME, std::ofstream::app);
+
+  for(auto var : berti->cache_acc) 
+    berti->cache_acc_file << var.cycle << " " << var.addr << " " << var.hit_or_miss << " " << var.type << std::endl;
+
+  berti->cache_acc.clear();
+  berti->cache_acc_file.close();
+  // WL
 }

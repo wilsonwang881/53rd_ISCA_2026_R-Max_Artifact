@@ -23,10 +23,35 @@ void CACHE::prefetcher_initialize() {
   // Clear the file that records issued prefetches.
   pref.pf_acc_file.open(pref.PF_ADDR_FILE_NAME, std::ios::out | std::ios::trunc);
   pref.pf_acc_file.close();
+
+  pref.cache_acc_file.open(pref.CACHE_ACC_FILE_NAME, std::ios::out | std::ios::trunc);
+  pref.cache_acc_file.close();
 }
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) {
   auto &pref = ::SPP[{this, cpu}];
+
+  // WL: for recording issued SPP prefetches 
+  bool search_MSHR = std::find_if(std::begin(MSHR), std::end(MSHR),
+         [match = base_addr >> OFFSET_BITS, shamt = OFFSET_BITS]
+         (const auto& entry) {
+           return (entry.address >> shamt) == match && entry.type == access_type::PREFETCH; 
+         }) != MSHR.end();
+
+  struct spp::prefetcher::ACC acc{base_addr, current_cycle, useful_prefetch ? 1 : search_MSHR, type};
+  pref.cache_acc.push_back(acc);
+
+  if (pref.cache_acc.size() > pref.PF_ACC_THRESHOLD_LENGTH) {
+    pref.cache_acc_file.open(pref.CACHE_ACC_FILE_NAME, std::ofstream::app);
+
+    for(auto var : pref.cache_acc) 
+      pref.cache_acc_file << var.cycle << " " << var.addr << " " << var.hit_or_miss << " " << var.type << std::endl;
+
+    pref.cache_acc.clear();
+    pref.cache_acc_file.close();
+  }
+  // WL
+
 
   pref.update_demand(base_addr,this->get_set_index(base_addr));
   pref.initiate_lookahead(base_addr);
@@ -143,6 +168,14 @@ void CACHE::prefetcher_final_stats() {
     pref.pf_acc_file << var.cycle << " " << var.addr << std::endl;
 
   pref.pf_acc_file.close();
+
+  pref.cache_acc_file.open(pref.CACHE_ACC_FILE_NAME, std::ofstream::app);
+
+  for(auto var : pref.cache_acc) 
+    pref.cache_acc_file << var.cycle << " " << var.addr << " " << var.hit_or_miss << " " << var.type << std::endl;
+
+  pref.cache_acc.clear();
+  pref.cache_acc_file.close();
   // WL
 }
 

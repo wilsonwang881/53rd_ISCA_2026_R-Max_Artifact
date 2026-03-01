@@ -24,6 +24,9 @@ void CACHE::prefetcher_initialize() {
       << pref.pending_pf_q.size() << "/" << (NUM_WAY * NUM_SET) 
       << " blocks at the beginning." << std::endl;
   }
+
+  pref.pf_acc_file.open(pref.PF_ADDR_FILE_NAME, std::ios::out | std::ios::trunc);
+  pref.pf_acc_file.close();
 }
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) {
@@ -59,9 +62,10 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   bool found_in_not_ready_queue = false;
   bool found_in_pending_queue = false;
   bool not_found_hit = false;
+  bool search_mshr = false;
 
   if (pref.oracle.ORACLE_ACTIVE && !cache_hit) {
-    bool search_mshr = pref.search_MSHR_inflight_writes(this, Q_TYPE::MSHR, base_addr); 
+    search_mshr = pref.search_MSHR_inflight_writes(this, Q_TYPE::MSHR, base_addr); 
     bool search_inflight_writes = pref.search_MSHR_inflight_writes(this, Q_TYPE::INFLIGHT_WRITES, base_addr);
 
     if (search_mshr || search_inflight_writes) {
@@ -199,7 +203,14 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   else 
     assert(cache_hit);
 
-  pref.oracle.update_demand(this->current_cycle, base_addr, useful_prefetch ? 0 : cache_hit, type);
+  if (!cache_hit) 
+    search_mshr = std::find_if(std::begin(MSHR), std::end(MSHR),
+         [match = base_addr >> OFFSET_BITS, shamt = OFFSET_BITS]
+         (const auto& entry) {
+           return (entry.address >> shamt) == match && entry.type == access_type::PREFETCH; 
+         }) != MSHR.end();
+
+  pref.oracle.update_demand(this->current_cycle, base_addr, useful_prefetch ? 1 : search_mshr, type);
 
   uint64_t way = this->get_way(base_addr, set);
 
@@ -305,5 +316,12 @@ void CACHE::prefetcher_final_stats() {
 
   if (pref.oracle.ORACLE_ACTIVE)
     pref.oracle.finish();
+
+  pref.pf_acc_file.open(pref.PF_ADDR_FILE_NAME, std::ofstream::app);
+
+  for(auto var : pref.pf_acc) 
+    pref.pf_acc_file << var.cycle << " " << var.addr << std::endl;
+
+  pref.pf_acc_file.close();
 }
 

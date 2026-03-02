@@ -29,7 +29,7 @@ namespace spp_l3 {
     constexpr static bool BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE = false;
     constexpr static bool REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE = true;
     constexpr static int MEMORY_USAGE_REDUCTION_FACTOR = 32;
-    std::string L2C_PHY_ACC_FILE_NAME = "L2C_phy_acc.txt";
+    std::string L2C_PHY_ACC_FILE_NAME = "L1D_phy_acc.txt";
     std::fstream rec_file;
     std::string PF_ACC_FILE_NAME = "pf_acc.txt";
     std::fstream pf_acc_file;
@@ -37,9 +37,9 @@ namespace spp_l3 {
     public:
     constexpr static bool ROLLBACK_ENABLED = true;
     constexpr static bool PF_ACC_COMPARE_ENABLED = true;
-    constexpr static bool TRANSLATE_PF_ADDR = false;
-    const static int SET_NUM = 2048;
-    const static int WAY_NUM = 10;
+    constexpr static bool TRANSLATE_PF_ADDR = true;
+    const static int SET_NUM = 64;
+    const static int WAY_NUM = 12;
     bool ORACLE_ACTIVE = true;
     uint64_t new_misses = 0;
     uint64_t runahead_hits = 0;

@@ -297,15 +297,19 @@ uint32_t CACHE::prefetcher_cache_fill(uint64_t addr, uint32_t set, uint32_t way,
 }
 
 void CACHE::prefetcher_cycle_operate() {
-  auto &pref = ::SPP_L3[{this, cpu}];
-  uint64_t res = pref.issue(this);
+  size_t repeat = 1;
 
-  if (res != 0) {
-    uint64_t set = this->get_set_index(res);
-    uint64_t way = this->get_way(res, set);
+  for (size_t i = 0; i < repeat; i++) {
+    auto &pref = ::SPP_L3[{this, cpu}];
+    uint64_t res = pref.issue(this);
 
-    if (way < NUM_WAY) 
-      champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
+    if (res != 0) {
+      uint64_t set = this->get_set_index(res);
+      uint64_t way = this->get_way(res, set);
+
+      if (way < NUM_WAY) 
+        champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
+    }
   }
 }
 

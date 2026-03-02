@@ -15,7 +15,7 @@ namespace {
 uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
   uint64_t res = 0;
 
-//restart:
+restart:
 
   if (!pending_pf_q.empty()) {
 
@@ -102,6 +102,7 @@ uint64_t spp_l3::prefetcher::issue(CACHE* cache) {
       else {
         pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
         champsim::operable::lru_states.push_back(std::make_tuple(set, way, 1));
+        goto restart;
 
         res = 0;
 

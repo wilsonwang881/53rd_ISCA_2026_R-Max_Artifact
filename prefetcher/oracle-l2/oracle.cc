@@ -67,13 +67,6 @@ void spp_l3::SPP_ORACLE::file_read() {
   if (TRANSLATE_PF_ADDR) 
     load_translations();
 
-  if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) 
-    std::cout << "Belady's cache replacement policy active." << std::endl;
-  else if (REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE) 
-    std::cout << "Reuse distance based cache replacement policy active." << std::endl;
-  else 
-    std::cout << "LRU cache replacement policy active." << std::endl;
-
   uint64_t total_mem_acc = 0;
   omp_lock_t lock;
   omp_init_lock(&lock);
@@ -143,6 +136,8 @@ omp_set_num_threads(1);
     omp_unset_lock(&lock);
 
     if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) {
+      std::cout << "Belady's cache replacement policy active." << std::endl;
+
       for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
         // Separate accesses into different sets.
         std::deque<acc_timestamp> set_processing;
@@ -235,6 +230,8 @@ omp_set_num_threads(1);
       }
     }
     else if (REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE) {
+      std::cout << "Reuse distance based cache replacement policy active." << std::endl;
+
       for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
         // Separate accesses into different sets.
         std::deque<acc_timestamp> set_processing;
@@ -399,6 +396,86 @@ omp_set_num_threads(1);
         in_cache.clear();
       }
     }
+    else {
+      std::cout << "LRU cache replacement policy active." << std::endl;
+
+      for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
+        // Separate accesses into different sets.
+        std::deque<acc_timestamp> set_processing;
+
+        for(auto var : readin) {
+          if (var.set == set_number) 
+            set_processing.push_back(var);
+        } 
+
+        // Use the optimal cache replacement policy to work out hit/miss for each access.
+        std::vector<acc_timestamp> set_container;
+
+        for (uint64_t i = 0; i < set_processing.size(); i++) {
+          bool found = false;
+
+          for(auto &blk : set_container) {
+            if (blk.addr == set_processing[i].addr) {
+              found = true;
+              blk.cycle_demanded = set_processing[i].cycle_demanded;
+              break;
+            } 
+          }
+
+          // The set has the block.
+          if (found) 
+            set_processing[i].miss_or_hit = 1; 
+          // The set does not have the block.
+          else {
+            // The set has space.
+            if (set_container.size() < WAY_NUM) {
+              // Update the set.
+              set_container.push_back(set_processing[i]);
+
+              // Set the new block to be a miss.
+              set_processing[i].miss_or_hit = 0;
+
+              // Safety check.
+              assert(set_container.size() <= WAY_NUM);
+            }
+            // The set has no space.
+            else {
+              // Evict the block with the longest reuse distance.
+              uint64_t lru_time = set_container[0].cycle_demanded;
+              uint64_t eviction_candidate = 0;
+
+              for (uint64_t j = 0; j < WAY_NUM; j++) {
+                if (set_container[j].cycle_demanded <= lru_time) {
+                  lru_time = set_container[j].cycle_demanded;
+                  eviction_candidate = j; 
+                }
+              }
+
+              // Evict the block.
+              set_container.erase(set_container.begin() + eviction_candidate);
+
+              // Set the new block to be a miss.
+              set_processing[i].miss_or_hit = 0;
+
+              // Update the set.
+              set_container.push_back(set_processing[i]);
+
+              // Safety check.
+              assert(set_container.size() <= WAY_NUM);
+            }
+          }
+        }
+
+        for(auto &acc : readin) {
+          if (acc.set == set_number && acc.addr == set_processing.front().addr) {
+            acc.miss_or_hit = set_processing.front().miss_or_hit;
+            set_processing.pop_front();
+          }
+        }
+
+        assert(set_processing.size() == 0);
+      }
+    }
 
     // Use the hashmap to gather accesses.
     std::map<uint64_t, uint32_t> addr_counter_map;
@@ -478,7 +555,7 @@ omp_set_num_threads(1);
       for(auto& var : set_pf) {
         page = var.addr >> 12;
         blk = (var.addr & 0xFFF) >> 6;
-        if (prefetchable.find(page) != prefetchable.end() && prefetchable[page].test(blk)) {
+        if (prefetchable.find(page) != prefetchable.end() && prefetchable[page].test(blk) && var.type != 3) {
           var.type = 0;
         } 
         else 

@@ -26,7 +26,7 @@ namespace spp_l3 {
   class SPP_ORACLE {
     constexpr static uint64_t ACCESS_LEN = 100000;
     constexpr static bool ORACLE_DEBUG_PRINT = false;
-    constexpr static bool BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE = false;
+    constexpr static bool BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE = true;
     constexpr static bool REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE = false;
     constexpr static int MEMORY_USAGE_REDUCTION_FACTOR = 32;
     std::string L2C_PHY_ACC_FILE_NAME = "L2C_phy_acc.txt";
@@ -36,7 +36,7 @@ namespace spp_l3 {
 
     public:
     constexpr static bool ROLLBACK_ENABLED = true;
-    constexpr static bool PF_ACC_COMPARE_ENABLED = false;
+    constexpr static bool PF_ACC_COMPARE_ENABLED = true;
     constexpr static bool TRANSLATE_PF_ADDR = false;
     const static int SET_NUM = 2048;
     const static int WAY_NUM = 10;

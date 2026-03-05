@@ -40,11 +40,11 @@
 
     "L1I": {
         "sets": 64,
-        "ways": 8,
+        "ways": 800,
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 32,
-        "mshr_size": 800,
+        "mshr_size": 8,
         "latency": 4,
         "max_tag_check": 2,
         "max_fill": 2,
@@ -56,11 +56,11 @@
 
     "L1D": {
         "sets": 64,
-        "ways": 12,
+        "ways": 1200,
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 8,
-        "mshr_size": 1600,
+        "mshr_size": 16,
         "latency": 5,
         "max_tag_check": 2,
         "max_fill": 2,
@@ -72,11 +72,11 @@
 
     "L2C": {
         "sets": 2048,
-        "ways": 10,
+        "ways": 1000,
         "rq_size": 32,
         "wq_size": 32,
         "pq_size": 16,
-        "mshr_size": 3200,
+        "mshr_size": 32,
         "latency": 15,
         "max_tag_check": 1,
         "max_fill": 1,
@@ -88,11 +88,11 @@
 
     "ITLB": {
         "sets": 32,
-        "ways": 8,
+        "ways": 800,
         "rq_size": 16,
         "wq_size": 16,
         "pq_size": 0,
-        "mshr_size": 800,
+        "mshr_size": 8,
         "latency": 1,
         "max_tag_check": 2,
         "max_fill": 2,
@@ -101,11 +101,11 @@
 
     "DTLB": {
         "sets": 16,
-        "ways": 6,
+        "ways": 600,
         "rq_size": 16,
         "wq_size": 16,
         "pq_size": 0,
-        "mshr_size": 800,
+        "mshr_size": 8,
         "latency": 1,
         "max_tag_check": 2,
         "max_fill": 2,
@@ -118,11 +118,11 @@
 
     "STLB": {
         "sets": 128,
-        "ways": 16,
+        "ways": 1600,
         "rq_size": 32,
         "wq_size": 32,
         "pq_size": 1,
-        "mshr_size": 1600,
+        "mshr_size": 16,
         "latency": 8,
         "max_tag_check": 1,
         "max_fill": 1,
@@ -134,16 +134,16 @@
 
 	"PTW": {
 		"pscl5_set": 1,
-		"pscl5_way": 2,
+		"pscl5_way": 200,
 		"pscl4_set": 1,
-		"pscl4_way": 4,
+		"pscl4_way": 400,
 		"pscl3_set": 2,
-		"pscl3_way": 4,
+		"pscl3_way": 400,
 		"pscl2_set": 4,
-		"pscl2_way": 8,
+		"pscl2_way": 800,
 		"rq_size": 16,
     "pq_size": 1,
-		"mshr_size": 500,
+		"mshr_size": 5,
 		"max_read": 2,
 		"max_write": 2
 	},
@@ -151,11 +151,11 @@
     "LLC": {
         "frequency": 4000,
         "sets": 2048,
-        "ways": 24,
+        "ways": 2400,
         "rq_size": 32,
         "wq_size": 32,
         "pq_size": 32,
-        "mshr_size": 6400,
+        "mshr_size": 64,
         "latency": 20,
         "max_tag_check": 1,
         "max_fill": 1,

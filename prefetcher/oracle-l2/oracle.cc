@@ -536,14 +536,14 @@ omp_set_num_threads(1);
     std::map<uint64_t, std::bitset<64>> prefetchable;
 
     pf_acc_file.open(PF_ACC_FILE_NAME, std::ifstream::in);
-    uint64_t cycle, addr, page, blk;
+    uint64_t cycle, addr, level, page, blk;
 
     while (!pf_acc_file.eof()) {
-      pf_acc_file >> cycle >> addr;
+      pf_acc_file >> cycle >> addr >> level;
       page = addr >> 12;
       blk = (addr & 0xFFF) >> 6;
 
-      if (TRANSLATE_PF_ADDR) 
+      if (TRANSLATE_PF_ADDR && level) 
         page = fr_vpage_to_ppage_map[{0, page}] >> 12;
 
       prefetchable[page].set(blk);
@@ -555,9 +555,8 @@ omp_set_num_threads(1);
       for(auto& var : set_pf) {
         page = var.addr >> 12;
         blk = (var.addr & 0xFFF) >> 6;
-        if (prefetchable.find(page) != prefetchable.end() && prefetchable[page].test(blk) && var.type != 3) {
+        if (prefetchable.find(page) != prefetchable.end() && prefetchable[page].test(blk) && var.type != 3) 
           var.type = 0;
-        } 
         else 
           var.type = 3;
       }
@@ -787,6 +786,7 @@ uint64_t spp_l3::SPP_ORACLE::calc_set(uint64_t addr) {
 
 void spp_l3::SPP_ORACLE::finish() {
   rec_file.close();
+  std::cout << "oracle-l2" << std::endl;
   std::cout << "Hits in runahead prefetch list: " << runahead_hits << std::endl;
   std::cout << "Hits in MSHR " << MSHR_hits << std::endl;
   std::cout << "Hits in inflight_writes " << inflight_write_hits << std::endl;

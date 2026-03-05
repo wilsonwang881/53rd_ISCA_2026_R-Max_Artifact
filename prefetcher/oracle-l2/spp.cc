@@ -22,7 +22,6 @@ restart:
     auto mshr_occupancy = cache->get_mshr_occupancy();
     auto rq_occupancy = cache->get_rq_occupancy().back();
     auto wq_occupancy = cache->get_wq_occupancy().back();
-
     size_t erase_pos = 0;
 
     for (size_t i = 0; i < pending_pf_q.size(); i++) {
@@ -67,7 +66,7 @@ restart:
         if (prefetched) {
           pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
 
-          struct PF pf{addr, cache->current_cycle};
+          struct PF pf{addr, cache->current_cycle, 1};
           pf_acc.push_back(pf);
 
           if (pf_acc.size() > PF_ACC_THRESHOLD_LENGTH) {

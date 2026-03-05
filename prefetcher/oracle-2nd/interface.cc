@@ -22,6 +22,9 @@ void CACHE::prefetcher_initialize() {
       << pref.pending_pf_q.size() << "/" << (NUM_WAY * NUM_SET) 
       << " blocks at the beginning." << std::endl;
   }
+
+  pref.pf_acc_file.open(pref.PF_ADDR_FILE_NAME, std::ios::out | std::ios::trunc);
+  pref.pf_acc_file.close();
 }
 
 uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_t cache_hit, bool useful_prefetch, uint8_t type, uint32_t metadata_in) {
@@ -49,7 +52,6 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
   }
 
   uint64_t set = this->get_set_index(base_addr);
-  bool original_hit = cache_hit;
 
   if (pref.debug_print) 
     std::cout << "Hit/miss " << (unsigned)cache_hit << " set " << set << " addr " << base_addr << " at cycle " << this->current_cycle << " type " << (unsigned)type << " MSHR usage " << this->get_mshr_occupancy() << std::endl;

@@ -19,6 +19,7 @@
 #include "champsim_constants.h"
 #include "cache.h"
 #include <omp.h>
+#include <bitset>
 
 namespace spp_l2 {
 
@@ -30,9 +31,13 @@ namespace spp_l2 {
     constexpr static int MEMORY_USAGE_REDUCTION_FACTOR = 32;
     std::string L2C_PHY_ACC_FILE_NAME = "L2C_phy_acc.txt";
     std::fstream rec_file;
+    std::string PF_ACC_FILE_NAME = "pf_acc.txt";
+    std::fstream pf_acc_file;
 
     public:
     constexpr static bool ROLLBACK_ENABLED = true;
+    constexpr static bool PF_ACC_COMPARE_ENABLED = true;
+    constexpr static bool TRANSLATE_PF_ADDR = true;
     const static int SET_NUM = 2048;
     const static int WAY_NUM = 10;
     bool ORACLE_ACTIVE = true;
@@ -81,6 +86,12 @@ namespace spp_l2 {
     std::array<std::deque<acc_timestamp>, SET_NUM> bkp_pf;
     uint64_t oracle_pf_size;
 
+    // For translating virtual addresses to physical ones.
+    std::string va_to_pa_file_name = "va_to_pa.txt";
+    std::fstream va_to_pa_file;
+    std::map<std::pair<uint32_t, uint64_t>, uint64_t> fr_vpage_to_ppage_map; 
+
+    void load_translations();
     void init();
     void update_demand(uint64_t cycle, uint64_t addr, bool hit, uint64_t type);
     void file_write();

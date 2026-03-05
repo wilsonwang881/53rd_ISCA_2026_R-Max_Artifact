@@ -15,12 +15,23 @@ namespace {
 uint64_t spp_l2::prefetcher::issue(CACHE* cache) {
   uint64_t res = 0;
 
+restart:
+
   if (!pending_pf_q.empty()) {
 
     auto mshr_occupancy = cache->get_mshr_occupancy();
     auto rq_occupancy = cache->get_rq_occupancy().back();
     auto wq_occupancy = cache->get_wq_occupancy().back();
-    auto [addr, cycle, priority, RFO_write] = pending_pf_q.front();
+    size_t erase_pos = 0;
+
+    for (size_t i = 0; i < pending_pf_q.size(); i++) {
+      if (!std::get<3>(pending_pf_q[i])) {
+        erase_pos = i;
+        break;
+      } 
+    }
+
+    auto [addr, cycle, priority, RFO_write] = pending_pf_q[erase_pos];
     uint64_t set = (addr >> 6) & champsim::bitmask(champsim::lg2(cache->NUM_SET));
     uint64_t way = cache->get_way(addr, set);
     auto search_mshr = std::find_if(std::begin(cache->MSHR), std::end(cache->MSHR),
@@ -42,18 +53,32 @@ uint64_t spp_l2::prefetcher::issue(CACHE* cache) {
         << " rq " << rq_occupancy << std::endl;
 
       assert(remaining_acc != -1);
-      pending_pf_q.pop_front();
+      pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
+
       return 0;
     }
 
-
-    if (!RFO_write && mshr_occupancy < cache->get_mshr_size())  { 
+    if (!RFO_write && mshr_occupancy < cache->get_mshr_size() && ((cache->get_mshr_size() - mshr_occupancy) > erase_pos))  { 
       if (way == cache->NUM_WAY && search_mshr == cache->MSHR.end() && search_inflight_writes == cache->inflight_writes.end()) {
         res = addr;
         bool prefetched = cache->prefetch_line(addr, priority, 0, 0);
 
         if (prefetched) {
-          pending_pf_q.pop_front();
+          pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
+
+          struct PF pf{addr, cache->current_cycle,1};
+          pf_acc.push_back(pf);
+
+          if (pf_acc.size() > PF_ACC_THRESHOLD_LENGTH) {
+            pf_acc_file.open(PF_ADDR_FILE_NAME, std::ofstream::app);
+
+            for(auto var : pf_acc) 
+              pf_acc_file << var.cycle << " " << var.addr << std::endl;
+
+            pf_acc.clear();
+            pf_acc_file.close();
+          }
+
 
           if (pending_pf_q.size() % 100000 == 0) 
             pending_pf_q.shrink_to_fit();
@@ -70,8 +95,9 @@ uint64_t spp_l2::prefetcher::issue(CACHE* cache) {
         }
       }
       else {
-        pending_pf_q.pop_front();
+        pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
         champsim::operable::lru_states_L2C.push_back(std::make_tuple(set, way, 1));
+        goto restart;
 
         res = 0;
 
@@ -81,7 +107,9 @@ uint64_t spp_l2::prefetcher::issue(CACHE* cache) {
     }
     else if (RFO_write) {
       res = 0;
-      pending_pf_q.pop_front();
+
+      if (!oracle.PF_ACC_COMPARE_ENABLED) 
+        pending_pf_q.erase(pending_pf_q.begin() + erase_pos);
 
       if (pending_pf_q.size() % 100000 == 0) 
         pending_pf_q.shrink_to_fit();
@@ -293,4 +321,93 @@ bool spp_l2::prefetcher::search_do_not_fill_qs(CACHE* cache, std::deque<uint64_t
          (const auto& entry) {
            return (entry >> shamt) == match; 
          }) != q.end();
+}
+
+void spp_l2::prefetcher::rollback_op(CACHE* cache, uint64_t addr, uint8_t type, std::deque<SPP_ORACLE::acc_timestamp>::iterator search, std::deque<SPP_ORACLE::acc_timestamp> &q, bool bkp_q, std::string debug_info) {
+  uint64_t set = oracle.calc_set(addr);
+
+  if (oracle.ROLLBACK_ENABLED){
+    // Generate a rollback prefetch.
+    spp_l2::SPP_ORACLE::acc_timestamp rollback_pf = rollback(addr, search, cache);
+
+    // Erase the moved ahead prefetch in not ready queue. 
+    q.erase(search); 
+
+    if (check_issued(cache, rollback_pf.addr)) 
+      // Put back the rollback prefetch to not ready queue.
+      oracle.bkp_pf[set].push_back(rollback_pf);
+    else {
+      oracle.oracle_pf[set].push_front(rollback_pf);
+      oracle.oracle_pf_size++;
+    }
+
+    if (!bkp_q) 
+      oracle.oracle_pf_size--;
+
+    // If the rollback prefetch is in MSHR, push to do not fill.
+    update_MSHR_inflight_write_rollback(cache, rollback_pf);
+
+    // If the rollback prefetch is found in the pending issue queue.
+    auto piq_search = std::find_if(std::begin(pending_pf_q), std::end(pending_pf_q),
+                              [match = rollback_pf.addr >> cache->OFFSET_BITS, shamt = cache->OFFSET_BITS](const auto& entry) {
+                                return (std::get<0>(entry) >> shamt) == match; 
+                              });
+
+    if (piq_search!= pending_pf_q.end()) 
+      pending_pf_q.erase(piq_search);
+
+    if (debug_print) 
+      std::cout << debug_info << " miss in set " << set << " addr " << addr << " type " << (unsigned)type << " caused a rollback." << std::endl;
+  }
+  else {
+    assert(!oracle.ROLLBACK_ENABLED);
+    search->miss_or_hit--;
+    update_do_not_fill_queue(type == 3 ? cache->do_not_fill_write_address : cache->do_not_fill_address,
+                             addr, 
+                             false,
+                             cache,
+                             type == 3 ? "do_not_fill_write_address" : "do_not_fill_address");
+  }
+}
+
+
+void spp_l2::prefetcher::cache_db_op(CACHE* cache, uint64_t addr, uint64_t set, uint8_t type, std::deque<SPP_ORACLE::acc_timestamp>::iterator search, std::deque<SPP_ORACLE::acc_timestamp> &q, bool bkp_q, std::string debug_info, bool &found_in_not_ready_queue, bool &found_in_pending_queue) {
+  uint64_t way = oracle.check_set_pf_avail(search->addr);
+  found_in_not_ready_queue = true;
+  found_in_pending_queue = true;
+
+  if (debug_print) {
+    std::cout << "Hit in bkp set " << set << " addr " << addr << " type " << (unsigned)type << std::endl;
+    std::cout << "Found addr " << search->addr << " set " << search->set << " counter " << search->miss_or_hit << " set_availability " << oracle.set_availability[search->set] << " found way " << way << std::endl;
+  }
+
+  if (search->miss_or_hit == 1) {
+    // Do not fill the missed address. 
+    update_do_not_fill_queue(type == 3 ? cache->do_not_fill_write_address : cache->do_not_fill_address,
+                                  addr, 
+                                  false,
+                                  cache,
+                                  type == 3 ? "do_not_fill_write_address" : "do_not_fill_address");
+    q.erase(search);
+    oracle.unhandled_misses_not_replaced++;
+
+    if (!bkp_q) 
+      oracle.oracle_pf_size--;
+  }
+  else if(way < oracle.WAY_NUM) {
+    place_rollback(cache, search, set, way);
+    q.erase(search); 
+
+    if (!bkp_q) {
+      oracle.oracle_pf_size--;
+      oracle.oracle_pf_hits++;
+    }
+  }
+  else {
+    // Rollback prefetch.
+    // Find the counter with the missed address.
+    // If the counter is 1, do not replace.
+    // If the counter > 1, replace.
+    rollback_op(cache, addr, type, search, q, bkp_q, debug_info); 
+  }
 }

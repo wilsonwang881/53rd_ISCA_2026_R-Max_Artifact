@@ -1076,18 +1076,23 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
     if (prefetch_line(p_addr, fill_this_level, metadata_in))
     {
       // WL: for recording issued SPP prefetches 
-      struct Berti::PF pf{p_addr, current_cycle};
+      struct Berti::PF pf{p_addr, current_cycle, fill_this_level};
       berti->pf_acc.push_back(pf);
 
       if (berti->pf_acc.size() > berti->PF_ACC_THRESHOLD_LENGTH) {
         berti->pf_acc_file.open(berti->PF_ADDR_FILE_NAME, std::ofstream::app);
 
         for(auto var : berti->pf_acc) 
-          berti->pf_acc_file << var.cycle << " " << var.addr << std::endl;
+          berti->pf_acc_file << var.cycle << " " << var.addr << " " << var.level << std::endl;
 
         berti->pf_acc.clear();
         berti->pf_acc_file.close();
       }
+
+      /*
+      if (!fill_this_level) 
+        std::cout << "Filling L2 with 0x" << std::hex << p_addr << std::dec << std::endl;
+        */
       // WL
 
       ++average_issued;
@@ -1198,7 +1203,7 @@ void CACHE::prefetcher_final_stats()
   berti->pf_acc_file.open(berti->PF_ADDR_FILE_NAME, std::ofstream::app);
 
   for(auto var : berti->pf_acc) 
-    berti->pf_acc_file << var.cycle << " " << var.addr << std::endl;
+    berti->pf_acc_file << var.cycle << " " << var.addr << " " << var.level << std::endl;
 
   berti->pf_acc_file.close();
 

@@ -227,6 +227,7 @@ namespace berti_space
       struct PF {
         uint64_t addr;
         uint64_t cycle;
+        uint64_t level;
       };
 
       struct ACC {

@@ -15,6 +15,24 @@ void spp_l2::SPP_ORACLE::init() {
   file_read();
 }
 
+void spp_l2::SPP_ORACLE::load_translations() {
+  std::cout << "Reading vmem mapping for translating prefetches issued in virtual space to physical space." << std::endl;
+
+  uint32_t cpu_num; 
+  uint64_t vaddr_shifted; 
+  uint64_t nxt_pg;
+
+  va_to_pa_file.open(va_to_pa_file_name, std::ifstream::in);
+  fr_vpage_to_ppage_map.clear();
+
+  while(!va_to_pa_file.eof()) {
+    va_to_pa_file >> cpu_num >> vaddr_shifted >> nxt_pg;
+    fr_vpage_to_ppage_map.insert({{cpu_num, vaddr_shifted}, nxt_pg});
+  }
+
+  va_to_pa_file.close();
+}
+
 void spp_l2::SPP_ORACLE::update_demand(uint64_t cycle, uint64_t addr, bool hit, uint64_t type) {
   acc_timestamp tmpp;
   tmpp.cycle_demanded = cycle;
@@ -40,16 +58,13 @@ void spp_l2::SPP_ORACLE::file_write() {
     access.clear();
   } 
 }
+
 void spp_l2::SPP_ORACLE::file_read() {
   acc_timestamp tmpp;
   std::cout << "Parsing memory accesses" << std::endl;
 
-  if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) 
-    std::cout << "Belady's cache replacement policy active." << std::endl;
-  else if (REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE) 
-    std::cout << "Reuse distance based cache replacement policy active." << std::endl;
-  else 
-    std::cout << "LRU cache replacement policy active." << std::endl;
+  if (TRANSLATE_PF_ADDR) 
+    load_translations();
 
   uint64_t total_mem_acc = 0;
   omp_lock_t lock;
@@ -120,6 +135,8 @@ omp_set_num_threads(1);
     omp_unset_lock(&lock);
 
     if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) {
+      std::cout << "Belady's cache replacement policy active." << std::endl;
+
       for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
         // Separate accesses into different sets.
         std::deque<acc_timestamp> set_processing;
@@ -212,6 +229,8 @@ omp_set_num_threads(1);
       }
     }
     else if (REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE) {
+      std::cout << "Reuse distance based cache replacement policy active." << std::endl;
+
       for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
         // Separate accesses into different sets.
         std::deque<acc_timestamp> set_processing;
@@ -376,6 +395,86 @@ omp_set_num_threads(1);
         in_cache.clear();
       }
     }
+    else {
+      std::cout << "LRU cache replacement policy active." << std::endl;
+
+      for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
+        // Separate accesses into different sets.
+        std::deque<acc_timestamp> set_processing;
+
+        for(auto var : readin) {
+          if (var.set == set_number) 
+            set_processing.push_back(var);
+        } 
+
+        // Use the optimal cache replacement policy to work out hit/miss for each access.
+        std::vector<acc_timestamp> set_container;
+
+        for (uint64_t i = 0; i < set_processing.size(); i++) {
+          bool found = false;
+
+          for(auto &blk : set_container) {
+            if (blk.addr == set_processing[i].addr) {
+              found = true;
+              blk.cycle_demanded = set_processing[i].cycle_demanded;
+              break;
+            } 
+          }
+
+          // The set has the block.
+          if (found) 
+            set_processing[i].miss_or_hit = 1; 
+          // The set does not have the block.
+          else {
+            // The set has space.
+            if (set_container.size() < WAY_NUM) {
+              // Update the set.
+              set_container.push_back(set_processing[i]);
+
+              // Set the new block to be a miss.
+              set_processing[i].miss_or_hit = 0;
+
+              // Safety check.
+              assert(set_container.size() <= WAY_NUM);
+            }
+            // The set has no space.
+            else {
+              // Evict the block with the longest reuse distance.
+              uint64_t lru_time = set_container[0].cycle_demanded;
+              uint64_t eviction_candidate = 0;
+
+              for (uint64_t j = 0; j < WAY_NUM; j++) {
+                if (set_container[j].cycle_demanded <= lru_time) {
+                  lru_time = set_container[j].cycle_demanded;
+                  eviction_candidate = j; 
+                }
+              }
+
+              // Evict the block.
+              set_container.erase(set_container.begin() + eviction_candidate);
+
+              // Set the new block to be a miss.
+              set_processing[i].miss_or_hit = 0;
+
+              // Update the set.
+              set_container.push_back(set_processing[i]);
+
+              // Safety check.
+              assert(set_container.size() <= WAY_NUM);
+            }
+          }
+        }
+
+        for(auto &acc : readin) {
+          if (acc.set == set_number && acc.addr == set_processing.front().addr) {
+            acc.miss_or_hit = set_processing.front().miss_or_hit;
+            set_processing.pop_front();
+          }
+        }
+
+        assert(set_processing.size() == 0);
+      }
+    }
 
     // Use the hashmap to gather accesses.
     std::map<uint64_t, uint32_t> addr_counter_map;
@@ -407,7 +506,6 @@ omp_set_num_threads(1);
           //addr_times_map[tmpp_readin.addr].clear(); 
         }
 
-
         //addr_times_map[tmpp_readin.addr].push_front(tmpp_readin.cycle_demanded);
         //readin[i].times = addr_times_map[tmpp_readin.addr];
         readin[i].miss_or_hit = addr_counter_map[tmpp_readin.addr];
@@ -431,6 +529,46 @@ omp_set_num_threads(1);
   omp_destroy_lock(&lock);
 
   oracle_pf_size = 0;
+
+  if (PF_ACC_COMPARE_ENABLED) {
+    std::cout << "Partial R-Max mode." << std::endl;
+    std::map<uint64_t, std::bitset<64>> prefetchable;
+
+    pf_acc_file.open(PF_ACC_FILE_NAME, std::ifstream::in);
+    uint64_t cycle, addr, level, page, blk;
+
+    while (!pf_acc_file.eof()) {
+      pf_acc_file >> cycle >> addr >> level;
+      page = addr >> 12;
+      blk = (addr & 0xFFF) >> 6;
+
+      if (TRANSLATE_PF_ADDR && !level) 
+        page = fr_vpage_to_ppage_map[{0, page}] >> 12;
+
+      prefetchable[page].set(blk);
+    }
+
+    pf_acc_file.close();
+
+    for(auto& set_pf : oracle_pf) {
+      for(auto& var : set_pf) {
+        page = var.addr >> 12;
+        blk = (var.addr & 0xFFF) >> 6;
+        if (prefetchable.find(page) != prefetchable.end() && prefetchable[page].test(blk) && var.type != 3) 
+          var.type = 0;
+        else 
+          var.type = 3;
+      }
+    }
+
+    uint64_t prefetchable_total = 0;
+
+    for(auto [key, val]: prefetchable) 
+      prefetchable_total += val.count();  
+
+    std::cout << "Prefetches available in " << prefetchable.size() << " pages with a total of " << prefetchable_total << " prefetches." << std::endl;
+
+  }
 
   for(auto var : oracle_pf) 
     oracle_pf_size += var.size(); 
@@ -573,7 +711,10 @@ std::vector<std::tuple<uint64_t, uint64_t, bool, bool>> spp_l2::SPP_ORACLE::poll
           set_availability[set]--;
 
         if (ite->type == 3) { 
-          std::get<3>(target) = false;
+          if (PF_ACC_COMPARE_ENABLED)
+            std::get<3>(target) = true;
+          else 
+            std::get<3>(target) = false;
 
           if (ORACLE_DEBUG_PRINT) 
             std::cout << "Skipping addr " << ite->addr << " type " << (unsigned)ite->type << std::endl;
@@ -643,6 +784,7 @@ uint64_t spp_l2::SPP_ORACLE::calc_set(uint64_t addr) {
 
 void spp_l2::SPP_ORACLE::finish() {
   rec_file.close();
+  std::cout << "oracle-2nd" << std::endl;
   std::cout << "Hits in runahead prefetch list: " << runahead_hits << std::endl;
   std::cout << "Hits in MSHR " << MSHR_hits << std::endl;
   std::cout << "Hits in inflight_writes " << inflight_write_hits << std::endl;

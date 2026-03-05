@@ -40,7 +40,7 @@
 
     "L1I": {
         "sets": 64,
-        "ways": 800,
+        "ways": 8,
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 32,
@@ -56,7 +56,7 @@
 
     "L1D": {
         "sets": 64,
-        "ways": 1200,
+        "ways": 12,
         "rq_size": 64,
         "wq_size": 64,
         "pq_size": 8,
@@ -72,7 +72,7 @@
 
     "L2C": {
         "sets": 2048,
-        "ways": 1000,
+        "ways": 10,
         "rq_size": 32,
         "wq_size": 32,
         "pq_size": 16,
@@ -82,13 +82,13 @@
         "max_fill": 1,
         "prefetch_as_load": false,
         "virtual_prefetch": false,
-        "prefetch_activate": "LOAD,PREFETCH",
-        "prefetcher": "spp-camera-lei"
+        "prefetch_activate": "LOAD,RFO,TRANSLATION,WRITE,PREFETCH",
+        "prefetcher": "oracle-l2"
     },
 
     "ITLB": {
         "sets": 32,
-        "ways": 800,
+        "ways": 8,
         "rq_size": 16,
         "wq_size": 16,
         "pq_size": 0,
@@ -101,7 +101,7 @@
 
     "DTLB": {
         "sets": 16,
-        "ways": 600,
+        "ways": 6,
         "rq_size": 16,
         "wq_size": 16,
         "pq_size": 0,
@@ -118,7 +118,7 @@
 
     "STLB": {
         "sets": 128,
-        "ways": 1600,
+        "ways": 16,
         "rq_size": 32,
         "wq_size": 32,
         "pq_size": 1,
@@ -134,13 +134,13 @@
 
 	"PTW": {
 		"pscl5_set": 1,
-		"pscl5_way": 200,
+		"pscl5_way": 2,
 		"pscl4_set": 1,
-		"pscl4_way": 400,
+		"pscl4_way": 4,
 		"pscl3_set": 2,
-		"pscl3_way": 400,
+		"pscl3_way": 4,
 		"pscl2_set": 4,
-		"pscl2_way": 800,
+		"pscl2_way": 8,
 		"rq_size": 16,
     "pq_size": 1,
 		"mshr_size": 5,
@@ -151,7 +151,7 @@
     "LLC": {
         "frequency": 4000,
         "sets": 2048,
-        "ways": 2400,
+        "ways": 24,
         "rq_size": 32,
         "wq_size": 32,
         "pq_size": 32,
@@ -162,7 +162,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,WRITE,TRANSLATION,RFO,PREFETCH",
-        "prefetcher": "wire-tap",
+        "prefetcher": "no",
         "replacement": "lru"
     },
 

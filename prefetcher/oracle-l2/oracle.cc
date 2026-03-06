@@ -543,7 +543,7 @@ omp_set_num_threads(1);
       page = addr >> 12;
       blk = (addr & 0xFFF) >> 6;
 
-      if (TRANSLATE_PF_ADDR && level) 
+      if (TRANSLATE_PF_ADDR) 
         page = fr_vpage_to_ppage_map[{0, page}] >> 12;
 
       prefetchable[page].set(blk);

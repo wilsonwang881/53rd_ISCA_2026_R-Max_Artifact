@@ -83,7 +83,7 @@ namespace spp {
     struct ACC {
       uint64_t addr;
       uint64_t cycle;
-      bool hit_or_miss;
+      uint64_t hit_or_miss_or_late;
       uint64_t type;
     };
 

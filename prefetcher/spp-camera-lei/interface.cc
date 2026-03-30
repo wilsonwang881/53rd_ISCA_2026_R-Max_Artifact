@@ -38,7 +38,16 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
            return (entry.address >> shamt) == match && entry.type == access_type::PREFETCH; 
          }) != MSHR.end();
 
-  struct spp::prefetcher::ACC acc{base_addr, current_cycle, useful_prefetch ? 1 : search_MSHR, type};
+  uint64_t hit_miss_late = 0;
+
+  if (useful_prefetch) 
+    hit_or_miss = 1; 
+  else if (search_MSHR) 
+    hit_or_miss = 2; 
+  else 
+    hit_or_miss = 0;
+
+  struct spp::prefetcher::ACC acc{base_addr, current_cycle, hit_miss_late, type};
   pref.cache_acc.push_back(acc);
 
   if (pref.cache_acc.size() > pref.PF_ACC_THRESHOLD_LENGTH) {

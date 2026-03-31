@@ -64,7 +64,7 @@ long MEMORY_CONTROLLER::operate()
     if (warmup) {
       for (auto& entry : channel.RQ) {
         if (entry.has_value()) {
-          response_type response{entry->address, entry->v_address, entry->data, entry->pf_metadata, entry->asid[0], entry->instr_depend_on_me}; // WL: added ASID
+          response_type response{entry->address, entry->v_address, entry->data, entry->pf_metadata, entry->instr_depend_on_me};
           for (auto ret : entry.value().to_return)
             ret->push_back(response);
 
@@ -87,8 +87,8 @@ long MEMORY_CONTROLLER::operate()
     // Finish request
     if (channel.active_request != std::end(channel.bank_request) && channel.active_request->event_cycle <= current_cycle) {
       response_type response{channel.active_request->pkt->value().address, channel.active_request->pkt->value().v_address,
-                             channel.active_request->pkt->value().data, channel.active_request->pkt->value().pf_metadata, channel.active_request->pkt->value().asid[0],
-                             channel.active_request->pkt->value().instr_depend_on_me}; // WL: added ASID
+                             channel.active_request->pkt->value().data, channel.active_request->pkt->value().pf_metadata,
+                             channel.active_request->pkt->value().instr_depend_on_me};
       for (auto ret : channel.active_request->pkt->value().to_return)
         ret->push_back(response);
 
@@ -270,7 +270,7 @@ void DRAM_CHANNEL::check_collision()
       };
       if (auto wq_it = std::find_if(std::begin(WQ), std::end(WQ), checker); wq_it != std::end(WQ)) {
         response_type response{rq_it->value().address, rq_it->value().v_address, rq_it->value().data, rq_it->value().pf_metadata,
-                               rq_it->value().asid[0], rq_it->value().instr_depend_on_me}; // WL: added ASID
+                               rq_it->value().instr_depend_on_me};
         response.data = wq_it->value().data;
         for (auto ret : rq_it->value().to_return)
           ret->push_back(response);
@@ -329,19 +329,10 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
 {
   auto& channel = channels[dram_get_channel(packet.address)];
 
-  // WL
-  if (champsim::debug_print && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-      fmt::print("[{}] {} address: {:#x} current cycle: {} rq channel size: {}\n", "DRAM", __func__,
-                 packet.address, 
-                 current_cycle,
-                 channel.RQ.size());
-  }
-
   // Find empty slot
   if (auto rq_it = std::find_if_not(std::begin(channel.RQ), std::end(channel.RQ), [](const auto& pkt) { return pkt.has_value(); });
       rq_it != std::end(channel.RQ)) {
     *rq_it = DRAM_CHANNEL::request_type{packet};
-    rq_it->value().asid[0] = packet.asid[0]; // WL: added ASID
     rq_it->value().forward_checked = false;
     rq_it->value().event_cycle = current_cycle;
     if (packet.response_requested)
@@ -350,33 +341,17 @@ bool MEMORY_CONTROLLER::add_rq(const request_type& packet, champsim::channel* ul
     return true;
   }
 
-  if (champsim::debug_print && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-      fmt::print("[{}] {} address: {:#x} current cycle: {} rq channel size: {} failed to find empty slot\n", "DRAM", __func__,
-                 packet.address, 
-                 current_cycle,
-                 channel.RQ.size());
-  }
-
   return false;
 }
 
 bool MEMORY_CONTROLLER::add_wq(const request_type& packet)
 {
   auto& channel = channels[dram_get_channel(packet.address)];
- 
-  // WL
-  if (champsim::debug_print && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-        fmt::print("[{}] {} address: {:#x} current cycle: {} wq channel size: {}\n", "DRAM", __func__,
-                   packet.address, 
-                   current_cycle,
-                   channel.WQ.size());
-  }
 
   // search for the empty index
   if (auto wq_it = std::find_if_not(std::begin(channel.WQ), std::end(channel.WQ), [](const auto& pkt) { return pkt.has_value(); });
       wq_it != std::end(channel.WQ)) {
     *wq_it = DRAM_CHANNEL::request_type{packet};
-    wq_it->value().asid[0] = packet.asid[0]; // WL: added ASID
     wq_it->value().forward_checked = false;
     wq_it->value().event_cycle = current_cycle;
 

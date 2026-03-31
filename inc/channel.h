@@ -67,7 +67,7 @@ class channel
     bool is_translated = true;
     bool response_requested = true;
 
-    uint16_t asid[2] = {std::numeric_limits<uint16_t>::max(), std::numeric_limits<uint16_t>::max()};
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
     access_type type{access_type::LOAD};
 
     uint32_t pf_metadata = 0;
@@ -87,14 +87,13 @@ class channel
     uint64_t v_address;
     uint64_t data;
     uint32_t pf_metadata = 0;
-    uint16_t asid = 66; // WL: added ASID, should not be asid == 66
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
 
-    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, uint16_t asid_, std::vector<std::reference_wrapper<ooo_model_instr>> deps)
-        : address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), asid(asid_), instr_depend_on_me(deps) // WL: added asid_ and asid(asid_)
+    response(uint64_t addr, uint64_t v_addr, uint64_t data_, uint32_t pf_meta, std::vector<std::reference_wrapper<ooo_model_instr>> deps)
+        : address(addr), v_address(v_addr), data(data_), pf_metadata(pf_meta), instr_depend_on_me(deps)
     {
     }
-    explicit response(request req) : response(req.address, req.v_address, req.data, req.pf_metadata, req.asid[0], req.instr_depend_on_me) {} // WL: added req.asid[0]
+    explicit response(request req) : response(req.address, req.v_address, req.data, req.pf_metadata, req.instr_depend_on_me) {}
   };
 
   template <typename R>

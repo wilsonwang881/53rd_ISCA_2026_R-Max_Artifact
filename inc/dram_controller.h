@@ -41,7 +41,7 @@ struct DRAM_CHANNEL {
     bool scheduled = false;
     bool forward_checked = false;
 
-    uint16_t asid[2] = {std::numeric_limits<uint16_t>::max(), std::numeric_limits<uint16_t>::max()};
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     uint32_t pf_metadata = 0;
 

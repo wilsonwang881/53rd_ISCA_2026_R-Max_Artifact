@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include "ooo_cpu.h"
 
 #include <algorithm>
@@ -41,15 +42,15 @@ long O3_CPU::operate()
   progress += schedule_instruction();          // schedule instructions
   progress += handle_memory_return();          // finalize memory transactions
   progress += operate_lsq();                   // execute memory transactions
-                                               //
+
   progress += dispatch_instruction(); // dispatch
   progress += decode_instruction();   // decode
   progress += promote_to_decode();
 
   progress += fetch_instruction(); // fetch
   progress += check_dib();
-
   initialize_instruction();
+
   // heartbeat
   if (show_heartbeat && (num_retired >= next_print_instruction)) {
     auto heartbeat_instr{std::ceil(num_retired - last_heartbeat_instr)};
@@ -87,7 +88,6 @@ void O3_CPU::begin_phase()
   stats.begin_instrs = num_retired;
   stats.begin_cycles = current_cycle;
   sim_stats = stats;
-  //std::cout << "begin_phase() " << stats.name << std::endl; // WL
 }
 
 void O3_CPU::end_phase(unsigned finished_cpu)
@@ -112,17 +112,11 @@ void O3_CPU::initialize_instruction()
     instrs_to_read_this_cycle--;
 
     auto stop_fetch = do_init_instruction(input_queue.front());
-
     if (stop_fetch)
       instrs_to_read_this_cycle = 0;
 
-    // Before push_back to IFETCH_BUFFER, need to change the ASID first
-    // But exclude ASID calculation in the baseline
-    // where the reset instruction numbers need to be recorded
-
-
     // Add to IFETCH_BUFFER
-    IFETCH_BUFFER.push_back(input_queue.front()); 
+    IFETCH_BUFFER.push_back(input_queue.front());
     input_queue.pop_front();
 
     IFETCH_BUFFER.back().event_cycle = current_cycle;
@@ -218,7 +212,7 @@ long O3_CPU::check_dib()
 void O3_CPU::do_check_dib(ooo_model_instr& instr)
 {
   // Check DIB to see if we recently fetched this line
-  if (auto dib_result = DIB.check_hit_with_asid_arg(instr.ip, instr.asid[0]); dib_result) {
+  if (auto dib_result = DIB.check_hit(instr.ip); dib_result) {
     // The cache line is in the L0, so we can mark this as complete
     instr.fetched = COMPLETED;
 
@@ -273,10 +267,6 @@ bool O3_CPU::do_fetch_instruction(std::deque<ooo_model_instr>::iterator begin, s
   fetch_packet.ip = begin->ip;
   fetch_packet.instr_depend_on_me = {begin, end};
 
-  // WL
-  // Add ASID based on instr_id
-  fetch_packet.asid[0] = begin->asid[0]; //calculate_asid(begin->instr_id);
-  // WL
 
   if (champsim::debug_print && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
     fmt::print("[IFETCH] {} instr_id: {} ip: {:#x} dependents: {} event_cycle: {} packet asid: {}\n", __func__, begin->instr_id, begin->ip,
@@ -334,7 +324,7 @@ long O3_CPU::decode_instruction()
   return progress;
 }
 
-void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill_with_asid_arg(instr.ip, instr.asid[0]); }
+void O3_CPU::do_dib_update(const ooo_model_instr& instr) { DIB.fill(instr.ip); }
 
 long O3_CPU::dispatch_instruction()
 {
@@ -543,7 +533,6 @@ bool O3_CPU::do_complete_store(const LSQ_ENTRY& sq_entry)
   data_packet.v_address = sq_entry.virtual_address;
   data_packet.instr_id = sq_entry.instr_id;
   data_packet.ip = sq_entry.ip;
-  data_packet.asid[0] = sq_entry.asid[0]; // WL: added ASID
 
   if (champsim::debug_print && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
     fmt::print("[SQ] {} instr_id: {} vaddr: {:x}\n", __func__, data_packet.instr_id, data_packet.v_address);
@@ -558,7 +547,6 @@ bool O3_CPU::execute_load(const LSQ_ENTRY& lq_entry)
   data_packet.v_address = lq_entry.virtual_address;
   data_packet.instr_id = lq_entry.instr_id;
   data_packet.ip = lq_entry.ip;
-  data_packet.asid[0] = lq_entry.asid[0]; // WL: added ASID
 
   if (champsim::debug_print && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
     fmt::print("[LQ] {} instr_id: {} vaddr: {:#x} lq_entry_asid: {} packet asid: {}\n", __func__, data_packet.instr_id, data_packet.v_address, lq_entry.asid[0], data_packet.asid[0]);
@@ -702,7 +690,7 @@ void O3_CPU::print_deadlock()
 }
 // LCOV_EXCL_STOP
 
-LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint16_t, 2> local_asid)
+LSQ_ENTRY::LSQ_ENTRY(uint64_t id, uint64_t addr, uint64_t local_ip, std::array<uint8_t, 2> local_asid)
     : instr_id(id), virtual_address(addr), ip(local_ip), asid(local_asid)
 {
 }
@@ -747,4 +735,3 @@ bool CacheBus::issue_write(request_type data_packet)
 
   return lower_level->add_wq(data_packet);
 }
-

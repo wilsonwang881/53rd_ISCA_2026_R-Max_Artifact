@@ -35,7 +35,7 @@ bool do_collision_for(Iter begin, Iter end, champsim::channel::request_type& pac
   // not this can happen: package with address virtual and physical X
   // (not translated) is inserted, package with physical address
   // (already translated) X.
-  if (auto found = std::find_if(begin, end, [addr = packet.address, shamt, packet_asid = packet.asid[0]](const auto& x) { return (x.address >> shamt) == (addr >> shamt) && (packet_asid == x.asid[0]); });
+  if (auto found = std::find_if(begin, end, [addr = packet.address, shamt](const auto& x) { return (x.address >> shamt) == (addr >> shamt); });
       found != end && packet.is_translated == found->is_translated) {
     func(packet, *found);
     return true;
@@ -62,7 +62,7 @@ bool do_collision_for_return(Iter begin, Iter end, champsim::channel::request_ty
 {
   return do_collision_for(begin, end, packet, shamt, [&](champsim::channel::request_type& source, champsim::channel::request_type& destination) {
     if (source.response_requested)
-      returned.emplace_back(source.address, source.v_address, destination.data, destination.pf_metadata, source.asid[0], source.instr_depend_on_me); // WL: added ASID
+      returned.emplace_back(source.address, source.v_address, destination.data, destination.pf_metadata, source.instr_depend_on_me);
   });
 }
 
@@ -135,18 +135,12 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
   fwd_pkt.forward_checked = false;
   queue.push_back(fwd_pkt);
 
-  // WL 
-  assert(fwd_pkt.asid[0] == packet.asid[0]);
-  // WL 
-
   return true;
 }
 
 bool champsim::channel::add_rq(const request_type& packet)
 {
   sim_stats.RQ_ACCESS++;
-
-  //std::cout << "Attempt to do_add_queue in add_rq with instr_id: " << packet.instr_id << std::endl; // WL
 
   auto result = do_add_queue(RQ, RQ_SIZE, packet);
 
@@ -162,8 +156,6 @@ bool champsim::channel::add_wq(const request_type& packet)
 {
   sim_stats.WQ_ACCESS++;
 
-  //std::cout << "Attempt to do_add_queue in add_wq" << std::endl; // WL 
-                                                                 //
   auto result = do_add_queue(WQ, WQ_SIZE, packet);
 
   if (result)
@@ -177,8 +169,6 @@ bool champsim::channel::add_wq(const request_type& packet)
 bool champsim::channel::add_pq(const request_type& packet)
 {
   sim_stats.PQ_ACCESS++;
-
-  //std::cout << "Attempt to do_add_queue in add_pq PQ_SIZE = " << PQ_SIZE << std::endl; // WL 
 
   auto fwd_pkt = packet;
   auto result = do_add_queue(PQ, PQ_SIZE, fwd_pkt);

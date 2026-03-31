@@ -36,13 +36,6 @@ constexpr int DEADLOCK_CYCLE{500};
 
 auto start_time = std::chrono::steady_clock::now();
 
-// WL
-#define RESET_INTERVAL 4000000
-uint64_t next_reset_moment = 0;
-
-// WL 
-uint64_t fed_in_instruction = 0;
-
 std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chrono::seconds>(std::chrono::steady_clock::now() - start_time); }
 
 namespace champsim
@@ -63,7 +56,7 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
   std::vector<bool> phase_complete(std::size(env.cpu_view()), false);
   while (!std::accumulate(std::begin(phase_complete), std::end(phase_complete), true, std::logical_and{})) {
     auto next_phase_complete = phase_complete;
-    
+
     // Operate
     long progress{0};
     for (champsim::operable& op : operables) {
@@ -77,7 +70,6 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
     }
 
     if (stalled_cycle >= DEADLOCK_CYCLE) {
-      std::cout << "Fed in instructions = " << (unsigned)fed_in_instruction << std::endl; // WL
       std::for_each(std::begin(operables), std::end(operables), [](champsim::operable& c) { c.print_deadlock(); });
       abort();
     }
@@ -86,20 +78,15 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
               [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
 
     // Read from trace
-    // WL: original code
     for (O3_CPU& cpu : env.cpu_view()) {
       auto& trace = traces.at(trace_index.at(cpu.cpu));
       for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count)
-      {
         cpu.input_queue.push_back(trace());
-        fed_in_instruction++;
-      }
-  
+
       // If any trace reaches EOF, terminate all phases
       if (trace.eof())
-  std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
+        std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
     }
-    // WL: end of original code
 
     // Check for phase finish
     for (O3_CPU& cpu : env.cpu_view()) {

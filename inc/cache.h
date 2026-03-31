@@ -87,17 +87,15 @@ class CACHE : public champsim::operable
     bool translate_issued = false;
     bool has_been_checked = false;
 
-    uint16_t asid[2] = {std::numeric_limits<uint16_t>::max(), std::numeric_limits<uint16_t>::max()};
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
 
     std::vector<std::reference_wrapper<ooo_model_instr>> instr_depend_on_me{};
     std::vector<std::deque<response_type>*> to_return{};
 
-    explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false, 0) {
-      asid[0] = req.asid[0]; // WL: added ASID
-    }
-    tag_lookup_type(request_type req, bool local_pref, bool skip, uint64_t cycle_demanded_);
+    explicit tag_lookup_type(request_type req) : tag_lookup_type(req, false, false) {}
+    tag_lookup_type(request_type req, bool local_pref, bool skip);
   };
 
   struct mshr_type {
@@ -113,7 +111,7 @@ class CACHE : public champsim::operable
     access_type type;
     bool prefetch_from_this;
 
-    uint16_t asid[2] = {std::numeric_limits<uint16_t>::max(), std::numeric_limits<uint16_t>::max()};
+    uint8_t asid[2] = {std::numeric_limits<uint8_t>::max(), std::numeric_limits<uint8_t>::max()};
 
     uint64_t event_cycle = std::numeric_limits<uint64_t>::max();
     uint64_t cycle_enqueued;
@@ -144,7 +142,6 @@ class CACHE : public champsim::operable
     uint64_t data = 0;
 
     uint32_t pf_metadata = 0;
-    uint16_t asid = std::numeric_limits<uint16_t>::max(); // WL: added ASID
 
     BLOCK() = default;
     explicit BLOCK(mshr_type mshr);
@@ -253,10 +250,6 @@ public:
     virtual void impl_replacement_final_stats() = 0;
   };
 
-  // WL 
-  void clear_internal_PQ();
-  // WL
-
   template <unsigned long long P_FLAG, unsigned long long R_FLAG>
   struct module_model final : module_concept {
     CACHE* intern_;
@@ -306,7 +299,7 @@ public:
     module_pimpl->impl_update_replacement_state(triggering_cpu, set, way, full_addr, ip, victim_addr, type, hit);
   }
   void impl_replacement_final_stats() { module_pimpl->impl_replacement_final_stats(); }
-   
+
   class builder_conversion_tag
   {
   };

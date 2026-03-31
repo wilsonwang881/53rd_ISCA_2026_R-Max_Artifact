@@ -90,7 +90,7 @@ int main(int argc, char** argv)
   std::vector<champsim::tracereader> traces;
   std::transform(
       std::begin(trace_names), std::end(trace_names), std::back_inserter(traces),
-      [knob_cloudsuite, repeat = simulation_given, i = uint16_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite, repeat); });
+      [knob_cloudsuite, repeat = simulation_given, i = uint8_t(0)](auto name) mutable { return get_tracereader(name, i++, knob_cloudsuite, repeat); });
 
   std::vector<champsim::phase_info> phases{
       {champsim::phase_info{"Warmup", true, warmup_instructions, std::vector<std::size_t>(std::size(trace_names), 0), trace_names},

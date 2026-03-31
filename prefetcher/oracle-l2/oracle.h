@@ -18,7 +18,6 @@
 #include "champsim.h"
 #include "champsim_constants.h"
 #include "cache.h"
-#include <omp.h>
 #include <bitset>
 
 namespace spp_l3 {
@@ -36,7 +35,7 @@ namespace spp_l3 {
 
     public:
     constexpr static bool ROLLBACK_ENABLED = true;
-    constexpr static bool PF_ACC_COMPARE_ENABLED = true;
+    constexpr static bool PF_ACC_COMPARE_ENABLED = false;
     constexpr static bool TRANSLATE_PF_ADDR = false;
     const static int SET_NUM = 2048;
     const static int WAY_NUM = 10;

@@ -68,17 +68,20 @@ void spp_l3::SPP_ORACLE::file_read() {
     load_translations();
 
   uint64_t total_mem_acc = 0;
-  omp_lock_t lock;
-  omp_init_lock(&lock);
 
-  std::fstream rec_file_t;
-  rec_file_t.open(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
+  std::fstream rec_file_t(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
+
+  if (!rec_file_t.is_open()) {
+    // create file
+    std::fstream create(L2C_PHY_ACC_FILE_NAME, std::ios::out | std::ios::trunc);
+    create.close();
+  }
+
   uint64_t readin_cycle_demanded, readin_addr, readin_miss_or_hit;
   uint64_t type;
   std::deque<acc_timestamp> readin_t;
 
-  while(!rec_file_t.eof()) {
-    rec_file_t >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type;
+  while(rec_file_t >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type) {
     tmpp.cycle_demanded = readin_cycle_demanded;
     tmpp.addr = (readin_addr >> 6) << 6;
     tmpp.set = calc_set(tmpp.addr);   
@@ -93,8 +96,6 @@ void spp_l3::SPP_ORACLE::file_read() {
 
   rec_file_t.close();
 
-omp_set_num_threads(1);
-#pragma omp parallel for
   for (int set_partition = 0; set_partition < MEMORY_USAGE_REDUCTION_FACTOR; set_partition++) {
     int set_number_begin = SET_NUM / MEMORY_USAGE_REDUCTION_FACTOR * set_partition;
     int set_number_end = SET_NUM / MEMORY_USAGE_REDUCTION_FACTOR * (set_partition + 1);
@@ -131,9 +132,7 @@ omp_set_num_threads(1);
 
     //rec_file_t.close();
     std::cout << "Oracle: read " << readin.size() << " accesses from file for set " << set_number_begin << " to set " << (set_number_end - 1) << std::endl;
-    omp_set_lock(&lock);
     total_mem_acc += readin.size();
-    omp_unset_lock(&lock);
 
     if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) {
       std::cout << "Belady's cache replacement policy active." << std::endl;
@@ -371,7 +370,7 @@ omp_set_num_threads(1);
           }
           // The block is not in the cache.
           else {
-            std::cout << "not_in_cache_start_index " << not_in_cache_start_index << " from thread " << omp_get_thread_num() << std::endl;
+            std::cout << "not_in_cache_start_index " << not_in_cache_start_index << std::endl;
             assert(false);
           }
         }
@@ -518,16 +517,12 @@ omp_set_num_threads(1);
 
     for(auto var : readin) {
       if (var.miss_or_hit != 0) {
-        omp_set_lock(&lock);
         oracle_pf[var.set].push_back(var); 
-        omp_unset_lock(&lock);
       }
     }
 
     std::cout << "Done updating hits/misses for set " << set_number_begin << " to set " << (set_number_end - 1) << std::endl;
   }
-
-  omp_destroy_lock(&lock);
 
   oracle_pf_size = 0;
 

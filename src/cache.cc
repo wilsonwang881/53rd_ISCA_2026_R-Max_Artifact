@@ -216,7 +216,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
 
   bool success = true;
   auto metadata_thru = fill_mshr.pf_metadata;
-  bool dirty_blk_evicted = false; // WL
+  //bool dirty_blk_evicted = false; // WL
   auto pkt_address = (virtual_prefetch ? fill_mshr.v_address : fill_mshr.address) & ~champsim::bitmask(match_offset_bits ? 0 : OFFSET_BITS);
   if (way != set_end) {
     if (way->valid && way->dirty) {
@@ -238,7 +238,7 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
       }
 
       success = lower_level->add_wq(writeback_packet);
-      dirty_blk_evicted = success;
+      //dirty_blk_evicted = success;
     }
 
     /*
@@ -274,15 +274,6 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
         // WL
       }
 
-      // WL: if the block is prefetched in during the current context switch cycle,
-      // then it is a useless prefetch and should update the prefetcher.
-      uint32_t dirty_blk_evicted_success = dirty_blk_evicted ? 1 : 0;
-      uint32_t blk_asid_match = way->asid == currently_active_thread_ID ? 1 : 0;
-      uint32_t blk_pfed = way->prefetch ? 1 : 0;
-      uint32_t pkt_pfed = fill_mshr.type == access_type::PREFETCH;
-      uint32_t pf_feed = (dirty_blk_evicted_success << 3) + (blk_asid_match << 2) + (blk_pfed << 1) + pkt_pfed;
-      // WL
-
       if (fill_mshr.type == access_type::PREFETCH)
         ++sim_stats.pf_fill;
 
@@ -299,20 +290,9 @@ bool CACHE::handle_fill(const mshr_type& fill_mshr)
     */
 
       metadata_thru = impl_prefetcher_cache_fill(pkt_address, get_set_index(fill_mshr.address), way_idx, fill_mshr.type == access_type::PREFETCH,
-                                                 evicting_address, pf_feed); // WL: replaced last metadata_thru with pf_feed.
+                                                 evicting_address, metadata_thru); 
 
       *way = BLOCK{fill_mshr};
-
-      // WL: for context switch experiments.
-      if (!L2C_name.compare(NAME) &&
-          fill_mshr.address >=  0 &&
-          fill_mshr.address <= (0 + champsim::operable::context_switch_data_exchange) && //0xffffffffff5500 
-          access_type{fill_mshr.type} == access_type::PREFETCH) {
-        way->dirty = true; 
-        champsim::operable::Pb_metadata_loaded += 64;
-        //std::cout << "Marked block " << fill_mshr.address << " dirty in " << this->NAME << std::endl;
-      }
-      // WL: for context switch experiments.
 
       impl_update_replacement_state(fill_mshr.cpu, get_set_index(fill_mshr.address), way_idx, fill_mshr.address, fill_mshr.ip, evicting_address,
                                     champsim::to_underlying(fill_mshr.type), false);
@@ -347,13 +327,8 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
 
   // access cache
   auto [set_begin, set_end] = get_set_span(handle_pkt.address);
-  // WL: original code
-  // auto way = std::find_if(set_begin, set_end,
-  //                       [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
-  // WL: end of original code
-  auto way = std::find_if(set_begin, set_end, [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS, asid = handle_pkt.asid[0]](const auto& entry) {
-    return ((entry.address >> shamt) == match) && (entry.asid == asid);
-  });
+    auto way = std::find_if(set_begin, set_end,
+                         [match = handle_pkt.address >> OFFSET_BITS, shamt = OFFSET_BITS](const auto& entry) { return (entry.address >> shamt) == match; });
 
   /*
   if(handle_pkt.type == access_type::WRITE && NAME.compare(L1D_name) == 0) {
@@ -631,7 +606,7 @@ long CACHE::operate()
       champsim::get_span_p(std::begin(inflight_tag_check), std::end(inflight_tag_check), MAX_TAG,
                            [cycle = current_cycle](const auto& pkt) { return pkt.event_cycle <= cycle && pkt.is_translated; });
   auto finish_tag_check_end = std::find_if_not(tag_check_ready_begin, tag_check_ready_end, do_tag_check);
-  auto tag_bw_consumed = std::distance(tag_check_ready_begin, finish_tag_check_end);
+  //auto tag_bw_consumed = std::distance(tag_check_ready_begin, finish_tag_check_end);
   tmpp_progress = std::distance(tag_check_ready_begin, finish_tag_check_end);
   progress += tmpp_progress;
   inflight_tag_check.erase(tag_check_ready_begin, finish_tag_check_end);
@@ -652,17 +627,6 @@ long CACHE::operate()
    }
  }
  */
-
-  // WL
-  reset_components();
-
-  /*
-  record_hit_miss_select_cache();
-
-  if ((L1I_name.compare(NAME) == 0 || L1D_name.compare(NAME) == 0 || L2C_name.compare(NAME) == 0 || LLC_name.compare(NAME) == 0) && tag_bw_consumed > 0) {
-    record_hit_miss_update(tag_bw_consumed);
-  }
-  */
   // WL
 
   return progress;
@@ -700,8 +664,8 @@ uint64_t CACHE::get_way(uint64_t address, uint64_t) const
 {
   auto [begin, end] = get_set_span(address);
   return std::distance(begin, std::find_if(begin, end,
-                                           [match = address >> OFFSET_BITS, shamt = OFFSET_BITS, asid = champsim::operable::currently_active_thread_ID](
-                                               const auto& entry) { return (entry.address >> shamt) == match && entry.asid == asid; }));
+                                           [match = address >> OFFSET_BITS, shamt = OFFSET_BITS](
+                                               const auto& entry) { return (entry.address >> shamt) == match; }));
 }
 // LCOV_EXCL_STOP
 
@@ -731,7 +695,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
   pf_packet.is_translated = !virtual_prefetch;
-  pf_packet.asid[0] = champsim::operable::currently_active_thread_ID; // WL: added ASID
+  pf_packet.asid[0] = 0;
   // pf_packet.instr_id = 0xFFFFFFFFFFFFFFF; // WL: add a different instr_id
 
   internal_PQ.emplace_back(pf_packet, true, !fill_this_level,0);
@@ -751,7 +715,7 @@ int CACHE::prefetch_line(uint64_t pf_addr, bool fill_this_level, uint32_t prefet
   pf_packet.address = pf_addr;
   pf_packet.v_address = virtual_prefetch ? pf_addr : 0;
   pf_packet.is_translated = !virtual_prefetch;
-  pf_packet.asid[0] = champsim::operable::currently_active_thread_ID; // WL: added ASID
+  pf_packet.asid[0] = 0;
   // pf_packet.instr_id = 0xFFFFFFFFFFFFFFF; // WL: add a different instr_id
 
   tag_lookup_type handle_pkt{pf_packet,true,!fill_this_level,cycle_needed};
@@ -1148,237 +1112,5 @@ void CACHE::clear_internal_PQ()
 {
   internal_PQ.clear();
   // std::cout << NAME << " internal_PQ cleared" << std::endl;
-}
-
-// WL
-void CACHE::reset_components()
-{
-  // Record prefetcher states.
-  if (have_recorded_prefetcher_states) {
-    if (L2C_name.compare(NAME) == 0) {
-      // record_spp_camera_states();
-      have_recorded_prefetcher_states = false;
-      // internal_PQ.clear();
-      // std::cout << "L2C internal_PQ cleared." << std::endl;
-    }
-  }
-
-  // Record L1 cache states.
-  if (have_recorded_L1I_states) {
-    if (L1I_name.compare(NAME) == 0) {
-      // record_L1I_states();
-      have_recorded_L1I_states = false;
-    }
-  } else if (have_recorded_L1D_states) {
-    if (L1D_name.compare(NAME) == 0) {
-      // record_L1D_states();
-      have_recorded_L1D_states = false;
-    }
-  }
-
-  if (SIMULATE_WITH_CACHE_RESET) {
-    /*
-    if (have_cleared_prefetcher && !L2C_name.compare(NAME) && champsim::operable::cpu_side_reset_ready && MSHR.size() == 0 &&
-    std::find(champsim::operable::emptied_cache.begin(), champsim::operable::emptied_cache.end(), NAME) == champsim::operable::emptied_cache.end())
-    {
-      if (champsim::operable::cache_clear_counter >= 5) {
-        have_cleared_prefetcher = false;
-
-        std::cout << "L2C prefetcher not cleared." << std::endl;
-        //CACHE::reset_spp_camera_prefetcher();
-        clear_internal_PQ();
-        champsim::operable::cache_clear_counter++;
-      }
-    }
-    if (have_cleared_prefetcher && L2C_name.compare(NAME) && champsim::operable::cpu_side_reset_ready && MSHR.size() == 0 &&
-    std::find(champsim::operable::emptied_cache.begin(), champsim::operable::emptied_cache.end(), NAME) == champsim::operable::emptied_cache.end() &&
-    STLB_name.compare(NAME)) { clear_internal_PQ(); champsim::operable::cache_clear_counter++; champsim::operable::emptied_cache.push_back(NAME);
-    }
-    */
-
-    if (champsim::operable::cpu_side_reset_ready
-        && std::find(champsim::operable::emptied_cache.begin(), champsim::operable::emptied_cache.end(), NAME)
-               == champsim::operable::emptied_cache.end()) //&& MSHR.size() == 0
-    {
-      clear_internal_PQ();
-      std::cout << "=> Cleared " << NAME << std::endl;
-      champsim::operable::cache_clear_counter++;
-      champsim::operable::emptied_cache.push_back(NAME);
-    }
-  }
-}
-
-// WL
-void CACHE::record_L1I_states()
-{
-  std::cout << "Recording " << NAME << " states." << std::endl;
-
-  std::ofstream L1I_state_file("L1I_state.txt", std::ofstream::app);
-
-  L1I_state_file << "=================================" << std::endl;
-  L1I_state_file << "Current cycle = " << current_cycle << std::endl;
-
-  for (auto var : block) {
-    L1I_state_file << (var.valid ? "1" : "0") << " " << (unsigned)var.address << std::endl;
-  }
-
-  L1I_state_file.close();
-}
-
-// WL
-void CACHE::record_L1D_states()
-{
-  std::cout << "Recording " << NAME << " states." << std::endl;
-
-  std::ofstream L1D_state_file("L1D_state.txt", std::ofstream::app);
-
-  L1D_state_file << "=================================" << std::endl;
-  L1D_state_file << "Current cycle = " << current_cycle << std::endl;
-
-  for (auto var : block) {
-    L1D_state_file << (var.valid ? "1" : "0") << " " << (unsigned)var.address << std::endl;
-  }
-
-  L1D_state_file.close();
-}
-
-// WL
-void CACHE::record_hit_miss_update(uint64_t tag_checks)
-{
-  // Gather miss numbers.
-  auto miss = 0ull;
-
-  for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-    miss = std::accumulate(std::begin(sim_stats.misses.at(champsim::to_underlying(type))), std::end(sim_stats.misses.at(champsim::to_underlying(type))), miss);
-  }
-
-  // Gather hit numbers.
-  auto hit = 0ull;
-
-  for (auto type : {access_type::LOAD, access_type::RFO, access_type::PREFETCH, access_type::WRITE, access_type::TRANSLATION}) {
-    hit = std::accumulate(std::begin(sim_stats.hits.at(champsim::to_underlying(type))), std::end(sim_stats.hits.at(champsim::to_underlying(type))), hit);
-  }
-
-  // Update the history records.
-  for (size_t i = 0; i < tag_checks; i++) {
-
-    if (current_cycle_history.size() >= history_length) {
-      miss_count_history.pop_front();
-      hit_count_history.pop_front();
-      current_cycle_history.pop_front();
-    }
-
-    miss_count_history.push_back(miss);
-    hit_count_history.push_back(hit);
-    current_cycle_history.push_back(current_cycle);
-
-    assert(miss_count_history.size() <= history_length);
-    assert(hit_count_history.size() <= history_length);
-    assert(current_cycle_history.size() <= history_length);
-
-    if (L1I_name.compare(NAME) == 0 && have_recorded_after_reset_hit_miss_number_L1I) {
-      after_reset_updates++;
-    } else if (L1D_name.compare(NAME) == 0 && have_recorded_after_reset_hit_miss_number_L1D) {
-      after_reset_updates++;
-    } else if (L2C_name.compare(NAME) == 0 && have_recorded_after_reset_hit_miss_number_L2C) {
-      after_reset_updates++;
-    } else if (LLC_name.compare(NAME) == 0 && have_recorded_after_reset_hit_miss_number_LLC) {
-
-      after_reset_updates++;
-    }
-
-    if (after_reset_updates == history_length) {
-      after_reset_updates = 0;
-
-      if (L1I_name.compare(NAME) == 0 && have_recorded_after_reset_hit_miss_number_L1I) {
-
-        record_hit_miss_write_to_file(false);
-        have_recorded_after_reset_hit_miss_number_L1I = false;
-      } else if (L1D_name.compare(NAME) == 0 && have_recorded_after_reset_hit_miss_number_L1D) {
-
-        record_hit_miss_write_to_file(false);
-        have_recorded_after_reset_hit_miss_number_L1D = false;
-      } else if (L2C_name.compare(NAME) == 0 && have_recorded_after_reset_hit_miss_number_L2C) {
-
-        record_hit_miss_write_to_file(false);
-        have_recorded_after_reset_hit_miss_number_L2C = false;
-      } else if (LLC_name.compare(NAME) == 0 && have_recorded_after_reset_hit_miss_number_LLC) {
-
-        record_hit_miss_write_to_file(false);
-        have_recorded_after_reset_hit_miss_number_LLC = false;
-      }
-    }
-  }
-}
-
-// WL
-void CACHE::record_hit_miss_select_cache()
-{
-  // Write the hit/miss numbers to file.
-  if (L1I_name.compare(NAME) == 0 && have_recorded_before_reset_hit_miss_number_L1I) {
-
-    after_reset_updates = 0;
-    record_hit_miss_write_to_file(true);
-    have_recorded_before_reset_hit_miss_number_L1I = false;
-    have_recorded_after_reset_hit_miss_number_L1I = true;
-  } else if (L1D_name.compare(NAME) == 0 && have_recorded_before_reset_hit_miss_number_L1D) {
-
-    after_reset_updates = 0;
-    record_hit_miss_write_to_file(true);
-    have_recorded_before_reset_hit_miss_number_L1D = false;
-    have_recorded_after_reset_hit_miss_number_L1D = true;
-  } else if (L2C_name.compare(NAME) == 0 && have_recorded_before_reset_hit_miss_number_L2C) {
-
-    after_reset_updates = 0;
-    record_hit_miss_write_to_file(true);
-    have_recorded_before_reset_hit_miss_number_L2C = false;
-    have_recorded_after_reset_hit_miss_number_L2C = true;
-  } else if (LLC_name.compare(NAME) == 0 && have_recorded_before_reset_hit_miss_number_LLC) {
-    after_reset_updates = 0;
-    record_hit_miss_write_to_file(true);
-    have_recorded_before_reset_hit_miss_number_LLC = false;
-    have_recorded_after_reset_hit_miss_number_LLC = true;
-  }
-}
-
-// WL
-void CACHE::record_hit_miss_write_to_file(bool before_or_after_reset)
-{
-  std::cout << "Recording " << NAME << " hit/miss numbers " << (before_or_after_reset ? "before" : "after") << " reset." << std::endl;
-
-  std::ofstream hit_miss_number_file((NAME + "_hit_miss_record.txt").c_str(), std::ofstream::app);
-
-  if (before_or_after_reset) {
-
-    hit_miss_number_file << "=================================" << std::endl;
-    hit_miss_number_file << "Current cycle = " << current_cycle << std::endl;
-    hit_miss_number_file << "1000 accesses before this moment:" << std::endl;
-    hit_miss_number_file << "hit = " << (unsigned)(hit_count_history.back() - hit_count_history.front()) << std::endl;
-    hit_miss_number_file << "miss = " << (unsigned)(miss_count_history.back() - miss_count_history.front()) << std::endl;
-    hit_miss_number_file << "cycles taken = " << (unsigned)(current_cycle_history.back() - current_cycle_history.front()) << std::endl;
-
-    /*
-    for(size_t i = 0; i < hit_count_history.size(); i++) {
-      hit_miss_number_file << i << " " << (unsigned)hit_count_history[i] << " " << (unsigned)miss_count_history[i] << " " << current_cycle_history[i] <<
-    std::endl;
-    }
-    */
-  } else {
-
-    hit_miss_number_file << "=================================" << std::endl;
-    hit_miss_number_file << "Current cycle = " << current_cycle << std::endl;
-    hit_miss_number_file << "1000 accesses after last reset:" << std::endl;
-    hit_miss_number_file << "hit = " << (unsigned)(hit_count_history.back() - hit_count_history.front()) << std::endl;
-    hit_miss_number_file << "miss = " << (unsigned)(miss_count_history.back() - miss_count_history.front()) << std::endl;
-    hit_miss_number_file << "cycles taken = " << (unsigned)(current_cycle_history.back() - current_cycle_history.front()) << std::endl;
-
-    /*
-    for(size_t i = 0; i < current_cycle_history.size(); i++) {
-      hit_miss_number_file << i << " " << current_cycle_history[i] << std::endl;
-    }
-    */
-  }
-
-  hit_miss_number_file.close();
 }
 // LCOV_EXCL_STOP

@@ -18,76 +18,10 @@
 #define OPERABLE_H
 
 // WL
-#define SIMULATE_WITH_CACHE_RESET 0
-#define SIMULATE_WITH_TLB_RESET 0
-#define SIMULATE_WITH_L1_RESET 0
-#define SIMULATE_WITH_L2_RESET 0
-#define SIMULATE_WITH_LLC_RESET 0
-#define SIMULATE_WITH_PREFETCHER_RESET 0
-#define SIMULATE_WITH_BTB_RESET 0
-#define SIMULATE_WITH_BRANCH_PREDICTOR_RESET 0
-#define SIMULATE_WITH_DIB_RESET 0
-#define RESET_INTERVAL 4000000
-#define ON_DEMAND_ACCESS_RECORD_SIZE 1000
-#define DEQUE_ON_DEMAND_ACCESS_RECORD_SIZE 8000
-
 #include <string>
 #include <deque>
 #include <unordered_set>
 #include <tuple>
-// WL
-
-// WL 
-namespace reset_misc {
-
-  struct access {
-    uint64_t cycle;
-    uint64_t addr;
-    uint64_t occurance;
-  };
-
-  struct on_demand_ins_access {
-    uint64_t cycle;
-    uint64_t ip;
-    uint64_t occurance;
-  };
-
-  struct addr_occr {
-    uint64_t addr;
-    uint64_t occr;
-    uint64_t cycle;
-  };
-  
-  struct on_demand_data_access : on_demand_ins_access {
-    bool load_or_store; 
-    std::vector<addr_occr> addr_rec;
-    std::unordered_set<uint64_t> addr;
-  };
-
-  /*
-  extern on_demand_ins_access before_reset_on_demand_ins_access[ON_DEMAND_ACCESS_RECORD_SIZE];
-  extern size_t before_reset_on_demand_ins_access_index;
-
-  extern on_demand_ins_access after_reset_on_demand_ins_access[ON_DEMAND_ACCESS_RECORD_SIZE];
-  extern size_t after_reset_on_demand_ins_access_index;
-
-  extern on_demand_data_access before_reset_on_demand_data_access[ON_DEMAND_ACCESS_RECORD_SIZE];
-  extern size_t before_reset_on_demand_data_access_index;
-
-  extern on_demand_data_access after_reset_on_demand_data_access[ON_DEMAND_ACCESS_RECORD_SIZE];
-  extern size_t after_reset_on_demand_data_access_index;
-
-  extern std::deque<on_demand_ins_access> dq_before_ins_access;
-  extern std::deque<on_demand_ins_access> dq_after_ins_access;
-  extern std::deque<on_demand_data_access> dq_before_data_access;
-  extern std::deque<on_demand_data_access> dq_after_data_access;
-  extern std::deque<on_demand_data_access> dq_pf_data_access;
-  extern std::deque<addr_occr> dq_before_knn;
-  extern std::deque<addr_occr> dq_after_knn;
-  extern std::deque<std::pair<uint64_t, bool>> dq_prefetch_communicate;
-  */
-  extern bool can_record_after_access;
-}
 // WL
 
 namespace champsim
@@ -97,32 +31,8 @@ class operable
 {
 public:
   const double CLOCK_SCALE;
-  //knn_predict
-  static bool knn_can_predict;
-  static uint64_t knn_accuracy;
-  static uint64_t reset_count;
+
   // WL
-  static bool context_switch_mode;
-  static bool L2C_have_issued_context_switch_prefetches;
-  static bool have_recorded_on_demand_ins_accesses;
-  static bool have_recorded_on_demand_data_accesses;
-  static bool have_recorded_before_reset_on_demand_ins_accesses;
-  static bool have_recorded_before_reset_on_demand_data_accesses;
-  static bool have_recorded_before_reset_hit_miss_number_L1I;
-  static bool have_recorded_before_reset_hit_miss_number_L1D;
-  static bool have_recorded_before_reset_hit_miss_number_L2C;
-  static bool have_recorded_before_reset_hit_miss_number_LLC;
-  static bool have_recorded_after_reset_hit_miss_number_L1I;
-  static bool have_recorded_after_reset_hit_miss_number_L1D;
-  static bool have_recorded_after_reset_hit_miss_number_L2C;
-  static bool have_recorded_after_reset_hit_miss_number_LLC;
-  static bool have_recorded_prefetcher_states;
-  static bool have_recorded_L1I_states;
-  static bool have_recorded_L1D_states;
-  static uint64_t context_switch_start_cycle;
-  static bool have_cleared_BTB;
-  static bool have_cleared_BP;
-  static uint64_t cache_clear_counter;
 
   const std::string L1I_name = "cpu0_L1I";
   const std::string L1D_name = "cpu0_L1D";
@@ -133,20 +43,6 @@ public:
   const std::string STLB_name = "cpu0_STLB";
   const std::string ORACLE_at = L2C_name;
   const std::string ORACLE_at_2nd = L2C_name;
-
-  static std::vector<std::string> emptied_cache;
-
-  static bool have_cleared_prefetcher;
-
-  static bool cpu_side_reset_ready;
-
-  static uint64_t Pb_metadata_loaded;
-
-  static uint64_t context_switch_data_exchange;
-
-  static uint16_t currently_active_thread_ID;
-
-  static std::vector<uint64_t> reset_ins_count_global;
 
   static uint64_t number_of_instructions_to_skip_before_log;
 

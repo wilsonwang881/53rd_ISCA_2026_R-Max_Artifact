@@ -42,8 +42,6 @@
 #include <iostream>
 #include <fstream>
 
-
-#define history_length 1001
 // WL
 
 struct cache_stats {
@@ -72,13 +70,6 @@ class CACHE : public champsim::operable
   using request_type = typename channel_type::request_type;
   using response_type = typename channel_type::response_type;
 
-  // WL 
-  std::deque<uint64_t> current_cycle_history;
-  std::deque<uint64_t> hit_count_history;
-  std::deque<uint64_t> miss_count_history;
-  int after_reset_updates;
-  // WL
-
   struct tag_lookup_type {
     uint64_t address;
     uint64_t v_address;
@@ -88,8 +79,6 @@ class CACHE : public champsim::operable
 
     uint32_t pf_metadata;
     uint32_t cpu;
-
-    //uint64_t cycle_demanded = 0;
 
     access_type type;
     bool prefetch_from_this;
@@ -262,22 +251,9 @@ public:
     virtual void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
                                                uint32_t type, uint8_t hit) = 0;
     virtual void impl_replacement_final_stats() = 0;
-
-    //virtual void reset_spp_camera_prefetcher() = 0; // WL
   };
 
   // WL 
-  void reset_components(); 
-  void clean_components();
-  void reset_prefetcher();
-  void invalidate_all_cache_blocks();
-  void clean_all_cache_blocks();
-  void record_spp_camera_states();
-  void record_L1I_states();
-  void record_L1D_states();
-  void record_hit_miss_update(uint64_t tag_checks);
-  void record_hit_miss_select_cache();
-  void record_hit_miss_write_to_file(bool before_or_after_reset);
   void clear_internal_PQ();
   // WL
 
@@ -299,7 +275,6 @@ public:
     void impl_update_replacement_state(uint32_t triggering_cpu, uint32_t set, uint32_t way, uint64_t full_addr, uint64_t ip, uint64_t victim_addr,
                                        uint32_t type, uint8_t hit);
     void impl_replacement_final_stats();
-    //void reset_spp_camera_prefetcher(); // WL
   };
 
   std::unique_ptr<module_concept> module_pimpl;
@@ -506,33 +481,6 @@ public:
         match_offset_bits(b.m_wq_full_addr), virtual_prefetch(b.m_va_pref), pref_activate_mask(b.m_pref_act_mask),
         module_pimpl(std::make_unique<module_model<P_FLAG, R_FLAG>>(this))
   {
-    // WL
-    //std::cout << "Initializing cache " << NAME << std::endl;
-
-    std::string L1D_file_name("cpu0_L1D_hit_miss_record.txt");
-    std::string L1I_file_name("cpu0_L1I_hit_miss_record.txt");
-    std::string L2C_file_name("cpu0_L2C_hit_miss_record.txt");
-    std::string LLC_file_name("LLC_hit_miss_record.txt");
-
-    if (L1D_name.compare(NAME) == 0)
-    {
-      remove(L1D_file_name.c_str());
-    }
-    else if (L1I_name.compare(NAME) == 0)
-    {
-      remove(L1I_file_name.c_str());
-    }
-    else if (L2C_name.compare(NAME) == 0)
-    {
-      remove(L2C_file_name.c_str());
-    }
-    else if (LLC_name.compare(NAME) == 0)
-    {
-      remove(LLC_file_name.c_str());
-    }
-
-    after_reset_updates = 0;
-    // WL
   }
 };
 

@@ -41,11 +41,6 @@ long int transform_while_n(R& queue, Output out, long int sz, F&& test_func, G&&
 {
   auto [begin, end] = champsim::get_span_p(std::begin(queue), std::end(queue), sz, std::forward<F>(test_func));
   auto retval = std::distance(begin, end);
-  
-  // WL 
-  //if (queue.size() == 1 && begin == end && begin != std::end(queue))
-  //  end++; 
-
   std::transform(begin, end, out, std::forward<G>(transform_func));
   queue.erase(begin, end);
   return retval;

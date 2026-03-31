@@ -47,21 +47,8 @@ std::chrono::seconds elapsed_time() { return std::chrono::duration_cast<std::chr
 
 namespace champsim
 {
-phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader>& traces, std::vector<uint64_t>& reset_ins_count)
+phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader>& traces)
 {
-  // WL
-  int reset_ins_count_readin_index = 0;
-  int num_resets = reset_ins_count.size();
-
-  if (DUMP_INS_NUMBER_EVERY_4M_CYCLES > 0)
-    next_reset_moment = 4000000; // dummy value, will be overwritten after warmup is completed
-  else 
-  {
-    next_reset_moment = reset_ins_count[0];
-    reset_ins_count_readin_index = 1;
-  }
-  // WL
-
   auto [phase_name, is_warmup, length, trace_index, trace_names] = phase;
   auto operables = env.operable_view();
 
@@ -70,17 +57,6 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
     op.warmup = is_warmup;
     op.begin_phase();
   }
-
-  //WL
-  O3_CPU& cpu_0 = env.cpu_view()[0];
-
-  if (DUMP_INS_NUMBER_EVERY_4M_CYCLES > 0)
-  {
-    next_reset_moment = cpu_0.current_cycle + 4000000;
-  }
-
-  std::cout << "Resetting start at cycle " << next_reset_moment << std::endl;
-  // WL
 
   // Perform phase
   int stalled_cycle{0};
@@ -109,111 +85,21 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
     std::sort(std::begin(operables), std::end(operables),
               [](const champsim::operable& lhs, const champsim::operable& rhs) { return lhs.leap_operation < rhs.leap_operation; });
 
-    // WL
-    if (DUMP_INS_NUMBER_EVERY_4M_CYCLES > 0)
-    {
-      if (cpu_0.current_cycle >= next_reset_moment)
-      {
-        reset_ins_count.push_back(cpu_0.num_retired);
-        next_reset_moment += RESET_INTERVAL;
-
-        std::cout << std::endl << "Recording @ins. count = " << cpu_0.num_retired << " at cycle " << cpu_0.current_cycle << std::endl;
-        champsim::operable::have_recorded_on_demand_ins_accesses = true;
-        champsim::operable::have_recorded_on_demand_data_accesses = true;
-        champsim::operable::have_recorded_before_reset_on_demand_ins_accesses = true;
-        champsim::operable::have_recorded_before_reset_on_demand_data_accesses = true;
-        champsim::operable::have_recorded_before_reset_hit_miss_number_L1I = true;
-        champsim::operable::have_recorded_before_reset_hit_miss_number_L1D = true;
-        champsim::operable::have_recorded_before_reset_hit_miss_number_L2C = true;
-        champsim::operable::have_recorded_before_reset_hit_miss_number_LLC = true;
-        champsim::operable::have_recorded_prefetcher_states = true;
-        champsim::operable::have_recorded_L1I_states = true;
-        champsim::operable::have_recorded_L1D_states = true;
-        champsim::operable::context_switch_mode = false;
-        champsim::operable::Pb_metadata_loaded = 0;
-        champsim::operable::cpu0_num_retired = cpu_0.num_retired;
-        reset_misc::can_record_after_access = false;
-      }
-    }
-    else
-    {
-    if (cpu_0.num_retired >= next_reset_moment && // + cpu_0.input_queue.size() 
-        reset_ins_count_readin_index <= num_resets) {
-
-      std::cout << std::endl << "Resetting @ins. count = " << std::dec << (unsigned)cpu_0.num_retired << " + " << (unsigned)cpu_0.input_queue.size() << " = " << (unsigned)(cpu_0.num_retired + cpu_0.input_queue.size()) << " at cycle " << cpu_0.current_cycle << std::endl;
-      std::cout << "Number of fed in instructions = " << fed_in_instruction << std::endl;
-      champsim::operable::context_switch_mode = true;
-      champsim::operable::Pb_metadata_loaded = 0;
-      champsim::operable::L2C_have_issued_context_switch_prefetches = false;
-      champsim::operable::have_recorded_on_demand_ins_accesses = true;
-      champsim::operable::have_recorded_on_demand_data_accesses = true;
-      champsim::operable::have_recorded_before_reset_on_demand_ins_accesses = true;
-      champsim::operable::have_recorded_before_reset_on_demand_data_accesses = true;
-      champsim::operable::have_recorded_before_reset_hit_miss_number_L1I = true;
-      champsim::operable::have_recorded_before_reset_hit_miss_number_L1D = true;
-      champsim::operable::have_recorded_before_reset_hit_miss_number_L2C = true;
-      champsim::operable::have_recorded_before_reset_hit_miss_number_LLC = true;
-      champsim::operable::have_recorded_prefetcher_states = true;
-      champsim::operable::have_recorded_L1I_states = true;
-      champsim::operable::have_recorded_L1D_states = true;
-      champsim::operable::have_cleared_prefetcher = true;
-      champsim::operable::have_cleared_BTB = true;
-      champsim::operable::have_cleared_BP = true;
-      champsim::operable::cache_clear_counter = 0;
-
-      cpu_0.reset_ins_count = next_reset_moment;
-
-      if (SIMULATE_WITH_CACHE_RESET) 
-        champsim::operable::currently_active_thread_ID++;
-
-      std::cout << "ASID incremented to " << (unsigned)champsim::operable::currently_active_thread_ID << std::endl;
-      champsim::operable::reset_count++;
-      //std::cout <<"Reset count is"<< reset_ins_count_readin_index <<std::endl;
-
-      // prevent out of range index
-      if (reset_ins_count_readin_index <= num_resets){
-        next_reset_moment = reset_ins_count[reset_ins_count_readin_index];
-        //std::cout << "reset_ins_count_readin_index = " << reset_ins_count_readin_index << " next_reset_moment = " << next_reset_moment << std::endl;
-      }
-
-      reset_ins_count_readin_index++;
-    }    
-    // WL
-   }
-
     // Read from trace
-    // WL: added condition to check if the simulator is in context switch mode
-    if (!champsim::operable::context_switch_mode)
-    {
-	    // WL: original code
-	    for (O3_CPU& cpu : env.cpu_view()) {
-	      auto& trace = traces.at(trace_index.at(cpu.cpu));
-	      for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count)
-        {
-          if (DUMP_INS_NUMBER_EVERY_4M_CYCLES > 0) {
-            champsim::operable::cpu0_num_retired = cpu_0.num_retired;
-            cpu.input_queue.push_back(trace());
-            fed_in_instruction++;
-          }
-          else {
-           if (fed_in_instruction < next_reset_moment) 
-           {
-             champsim::operable::cpu0_num_retired = cpu_0.num_retired;
-             cpu.input_queue.push_back(trace());
-             fed_in_instruction++;
-           }
-          }
-          cpu.input_queue.back().asid[0] = champsim::operable::currently_active_thread_ID;
-          //std::cout << "[INS] ip 0x" << std::hex << (unsigned)cpu.input_queue.back().ip << " asid " << (unsigned)cpu.input_queue.back().asid[0] << std::endl;
-        }
-		
-	      // If any trace reaches EOF, terminate all phases
-	      if (trace.eof())
-		std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
-	    }
-	    // WL: end of original code
+    // WL: original code
+    for (O3_CPU& cpu : env.cpu_view()) {
+      auto& trace = traces.at(trace_index.at(cpu.cpu));
+      for (auto pkt_count = cpu.IN_QUEUE_SIZE - static_cast<long>(std::size(cpu.input_queue)); !trace.eof() && pkt_count > 0; --pkt_count)
+      {
+        cpu.input_queue.push_back(trace());
+        fed_in_instruction++;
+      }
+  
+      // If any trace reaches EOF, terminate all phases
+      if (trace.eof())
+  std::fill(std::begin(next_phase_complete), std::end(next_phase_complete), true);
     }
-    // WL
+    // WL: end of original code
 
     // Check for phase finish
     for (O3_CPU& cpu : env.cpu_view()) {
@@ -263,14 +149,14 @@ phase_stats do_phase(phase_info phase, environment& env, std::vector<tracereader
 }
 
 // simulation entry point
-std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces, std::vector<uint64_t>& reset_ins_count)
+std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces)
 {
   for (champsim::operable& op : env.operable_view())
     op.initialize();
 
   std::vector<phase_stats> results;
   for (auto phase : phases) {
-    auto stats = do_phase(phase, env, traces, reset_ins_count);
+    auto stats = do_phase(phase, env, traces);
     if (!phase.is_warmup)
       results.push_back(stats);
   }

@@ -34,101 +34,15 @@
  
 namespace champsim
 {
-std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces, std::vector<uint64_t>& reset_ins_count);
+std::vector<phase_stats> main(environment& env, std::vector<phase_info>& phases, std::vector<tracereader>& traces);
 }
-//KNN predict
-bool champsim::operable::knn_can_predict = false;
-//uint64_t champsim::operable::knn_accuracy=0;
-uint64_t champsim::operable::reset_count=0;
 // WL
-bool champsim::operable::context_switch_mode = false;
-bool champsim::operable::L2C_have_issued_context_switch_prefetches = false;
-bool champsim::operable::have_recorded_on_demand_ins_accesses = false;
-bool champsim::operable::have_recorded_on_demand_data_accesses = false;
-bool champsim::operable::have_recorded_before_reset_on_demand_ins_accesses = false;
-bool champsim::operable::have_recorded_before_reset_on_demand_data_accesses = false;
-bool champsim::operable::have_recorded_before_reset_hit_miss_number_L1I = false; 
-bool champsim::operable::have_recorded_before_reset_hit_miss_number_L1D = false; 
-bool champsim::operable::have_recorded_before_reset_hit_miss_number_L2C = false; 
-bool champsim::operable::have_recorded_before_reset_hit_miss_number_LLC = false; 
-bool champsim::operable::have_recorded_after_reset_hit_miss_number_L1I = false;
-bool champsim::operable::have_recorded_after_reset_hit_miss_number_L1D = false;
-bool champsim::operable::have_recorded_after_reset_hit_miss_number_L2C = false;
-bool champsim::operable::have_recorded_after_reset_hit_miss_number_LLC = false;
-bool champsim::operable::have_recorded_prefetcher_states = false;
-bool champsim::operable::have_recorded_L1I_states = false;
-bool champsim::operable::have_recorded_L1D_states = false;
-bool champsim::operable::have_cleared_prefetcher = false;
-bool champsim::operable::have_cleared_BTB = false;
-bool champsim::operable::have_cleared_BP = false;
-uint64_t champsim::operable::context_switch_data_exchange = 0;
-uint64_t champsim::operable::Pb_metadata_loaded = 0;
-uint64_t champsim::operable::context_switch_start_cycle = 0;
-bool champsim::operable::cpu_side_reset_ready = false;
-uint64_t champsim::operable::cache_clear_counter = 0;
-uint16_t champsim::operable::currently_active_thread_ID = 0;
-std::vector<uint64_t> champsim::operable::reset_ins_count_global;
-std::vector<std::string> champsim::operable::emptied_cache;
-uint64_t champsim::operable::number_of_instructions_to_skip_before_log = 0;
-uint64_t champsim::operable::cpu0_num_retired = 0;
 std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> champsim::operable::lru_states;
 std::deque<std::tuple<uint64_t, uint64_t, uint64_t>> champsim::operable::lru_states_L2C;
 // WL
 
-// WL 
-namespace reset_misc {
-
-  on_demand_ins_access before_reset_on_demand_ins_access[ON_DEMAND_ACCESS_RECORD_SIZE];
-  size_t before_reset_on_demand_ins_access_index;
-
-  on_demand_ins_access after_reset_on_demand_ins_access[ON_DEMAND_ACCESS_RECORD_SIZE];
-  size_t after_reset_on_demand_ins_access_index;
-
-  on_demand_data_access before_reset_on_demand_data_access[ON_DEMAND_ACCESS_RECORD_SIZE];
-  size_t before_reset_on_demand_data_access_index;
-
-  on_demand_data_access after_reset_on_demand_data_access[ON_DEMAND_ACCESS_RECORD_SIZE];
-  size_t after_reset_on_demand_data_access_index;
-
-  std::deque<on_demand_ins_access> dq_before_ins_access;
-  std::deque<on_demand_ins_access> dq_after_ins_access;
-  std::deque<on_demand_data_access> dq_before_data_access;
-  std::deque<on_demand_data_access> dq_after_data_access;
-  std::deque<on_demand_data_access> dq_pf_data_access;
-  std::deque<addr_occr> dq_before_knn;
-  std::deque<addr_occr> dq_after_knn;
-  std::deque<std::pair<uint64_t, bool>> dq_prefetch_communicate;
-  bool can_record_after_access = false;
-}
-// WL
-
 int main(int argc, char** argv)
 {
-  // WL
-  std::vector<uint64_t> reset_ins_count;
-  if (DUMP_INS_NUMBER_EVERY_4M_CYCLES == 0)
-  {
-    std::ifstream ins_number_every_4M_cycles_file;
-    ins_number_every_4M_cycles_file.open("reset_ins_number.txt", std::ios::in);
-
-    uint64_t reset_ins_count_readin;
-    //std::cout << "Reset at instruction:" << std::endl;
-
-    while(ins_number_every_4M_cycles_file >> reset_ins_count_readin)
-    {
-       reset_ins_count.push_back(reset_ins_count_readin);
-       champsim::operable::reset_ins_count_global.push_back(reset_ins_count_readin);
-       //std::cout << (unsigned)reset_ins_count_readin << std::endl;
-    }
-
-    reset_ins_count.push_back(4000000000);
-    champsim::operable::reset_ins_count_global.push_back(4000000000);
-
-    std::cout << "Number of resets: " << reset_ins_count.size() - 1 << std::endl;
-    ins_number_every_4M_cycles_file.close();
-  }
-  // WL
-
   champsim::configured::generated_environment gen_environment{};
 
   CLI::App app{"A microarchitecture simulator for research and education"};
@@ -188,23 +102,7 @@ int main(int argc, char** argv)
   fmt::print("\n*** ChampSim Multicore Out-of-Order Simulator ***\nWarmup Instructions: {}\nSimulation Instructions: {}\nNumber of CPUs: {}\nPage size: {}\n\n",
              phases.at(0).length, phases.at(1).length, std::size(gen_environment.cpu_view()), PAGE_SIZE);
 
-  auto phase_stats = champsim::main(gen_environment, phases, traces, reset_ins_count);
-
-  // WL
-  // Write the reset instructions to files
-  if (DUMP_INS_NUMBER_EVERY_4M_CYCLES > 0)
-  {
-    std::ofstream ins_number_every_4M_cycles_file;
-    ins_number_every_4M_cycles_file.open("reset_ins_number.txt", std::ios::out);
-
-    for (uint64_t reset_ins : reset_ins_count)
-    {
-      ins_number_every_4M_cycles_file << reset_ins << std::endl;
-    }
-
-    ins_number_every_4M_cycles_file.close();
-  }
-  // WL
+  auto phase_stats = champsim::main(gen_environment, phases, traces);
 
   fmt::print("\nChampSim completed all CPUs\n\n");
 

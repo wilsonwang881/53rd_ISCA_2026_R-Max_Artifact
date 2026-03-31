@@ -20,9 +20,6 @@
 #include <cstdint>
 #include <exception>
 
-// WL
-#define DUMP_INS_NUMBER_EVERY_4M_CYCLES 1
-
 namespace champsim
 {
 struct deadlock : public std::exception {

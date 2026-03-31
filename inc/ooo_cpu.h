@@ -101,22 +101,6 @@ class O3_CPU : public champsim::operable
 public:
   uint32_t cpu = 0;
 
-  // WL
-  std::ofstream before_reset_ins_access_file;
-  std::ofstream after_reset_ins_access_file;
-
-  std::ofstream before_reset_data_access_file;
-  std::ofstream after_reset_data_access_file;
-
-  void dump_before_reset_ins_accesses();
-  void dump_after_reset_ins_accesses();
-  void dump_before_reset_data_accesses();
-  void dump_after_reset_data_accesses();
-  uint16_t calculate_asid(uint64_t instr_id);
-
-  uint64_t reset_ins_count;
-  // WL
-
   // cycle
   uint64_t begin_phase_cycle = 0;
   uint64_t begin_phase_instr = 0;
@@ -210,8 +194,6 @@ public:
   uint64_t sim_cycle() const { return current_cycle - sim_stats.begin_cycles; }
 
   void print_deadlock() override final;
-
-  void reset_components(); // WL
 
 #include "ooo_cpu_module_decl.inc"
 

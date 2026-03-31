@@ -40,9 +40,6 @@ namespace spp_l3 {
     uint64_t issued_cs_pf_hit;
     uint64_t total_issued_cs_pf;
 
-    std::string occupancy_info = "occupancy.txt";
-    std::fstream occupancy_info_file;
-
     struct PF {
       uint64_t addr;
       uint64_t cycle;

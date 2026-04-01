@@ -2,9 +2,6 @@
 #include <cstdint>
 #include <optional>
 
-// WL
-#include <iostream>
-
 namespace spp
 {
   class BOOTSTRAP_TABLE
@@ -17,7 +14,6 @@ namespace spp
       int      confidence = 0;
       uint64_t offset = 0; // WL: changed uint32_t to uint64_t
       int      delta = 0;
-      uint64_t last_accessed_address = 0; // WL
     };
 
     // Global History Register (GHR) entries

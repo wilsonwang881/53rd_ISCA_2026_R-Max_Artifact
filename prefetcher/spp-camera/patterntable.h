@@ -3,10 +3,6 @@
 #include <optional>
 #include <tuple>
 
-// WL
-#include <iostream>
-#include <iomanip>
-
 namespace spp
 {
   class PATTERN_TABLE

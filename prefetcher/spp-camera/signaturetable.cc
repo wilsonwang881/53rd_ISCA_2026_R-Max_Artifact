@@ -21,7 +21,6 @@ std::optional<std::pair<uint32_t, int32_t>> spp::SIGNATURE_TABLE::read(uint64_t 
     return std::nullopt;
 
   match_way->last_used = ++access_count;
-  match_way->last_accessed_page_num = page; // WL: recorded address
   return std::pair{match_way->sig, (signed)page_offset - (signed)match_way->last_offset};
 }
 
@@ -46,6 +45,6 @@ void spp::SIGNATURE_TABLE::update(uint64_t addr, uint32_t sig)
     match_way = std::min_element(set_begin, set_end, [](auto x, auto y){ return x.last_used < y.last_used; });
   }
 
-  *match_way = {true, tag, page_offset, sig, ++access_count, page}; // WL: added the page number 
+  *match_way = {true, tag, page_offset, sig, ++access_count};
 }
 

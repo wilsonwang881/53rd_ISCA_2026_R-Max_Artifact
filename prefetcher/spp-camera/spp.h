@@ -55,7 +55,6 @@ namespace spp {
     std::vector<unsigned> depth_ptmiss_tracker;
 
     public:
-
     bool warmup = true;
 
     void update_demand(uint64_t base_addr, uint32_t set);

@@ -77,7 +77,6 @@ void CACHE::prefetcher_cycle_operate() {
 
   //pref.warmup = warmup_complete[cpu];
   // TODO: should this be pref.warmup = warmup_complete[cpu]; instead of pref.warmup = warmup; ?
-
   pref.issue(this);
   pref.step_lookahead();
 }

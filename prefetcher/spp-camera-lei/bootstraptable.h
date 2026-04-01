@@ -26,11 +26,6 @@ namespace spp
     public:
     void update(uint64_t addr, uint32_t sig, int confidence, int delta);
     std::optional<std::tuple<uint32_t, int, int>> check(uint64_t addr);
-
-    // WL 
-    void clear();
-    std::string record_Bootstrap_Table();
-    // WL 
   };
 }
 

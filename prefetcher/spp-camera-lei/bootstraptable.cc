@@ -34,35 +34,5 @@ void spp::BOOTSTRAP_TABLE::update(uint64_t addr, uint32_t sig, int confidence, i
     bst_item = std::min_element(begin, end, [](auto x, auto y){ return x.confidence < y.confidence; });
 
   // Place the information in the bootstrap table
-  *bst_item = {true, sig, confidence, pf_offset, delta, addr}; // WL: added the last accessed address
-}
-
-// WL
-void spp::BOOTSTRAP_TABLE::clear()
-{
-	for(size_t i = 0; i < MAX_GHR_ENTRY; i++)
-	{
-    page_bootstrap_table[i].valid = false;
-		page_bootstrap_table[i].sig = 0;
-		page_bootstrap_table[i].confidence = 0;
-		page_bootstrap_table[i].offset = 0;
-		page_bootstrap_table[i].delta = 0;
-	}
-}
-
-// WL 
-std::string spp::BOOTSTRAP_TABLE::record_Bootstrap_Table()
-{
-  std::string content("Bootstrap Table\n");
-
-  for(auto var : page_bootstrap_table) {
-    content = content + (var.valid ? "1" : "0") + " " + \
-              std::to_string(var.sig) + " " + \
-              std::to_string(var.confidence) + " " + \
-              std::to_string(var.offset) + " " + \
-              std::to_string(var.delta) + " " + \
-              std::to_string(var.last_accessed_address) + "\n";
-  }
-
-  return content;
+  *bst_item = {true, sig, confidence, pf_offset, delta};
 }

@@ -83,8 +83,8 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
     fwd_mshr.to_return = {&ul->returned};
 
   if ((champsim::debug_print) && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-    fmt::print("[{}] {} address: {:#x} v_address: {:#x} pt_page_offset: {} translation_level: {} packet asid: {} handle_pkt_asid: {} instr_id: {} CR3_addr: {:#x} pscl size: {}\n", NAME, __func__, fwd_mshr.address, fwd_mshr.v_address,
-               walk_offset / PTE_BYTES, walk_init.level, fwd_mshr.asid[0], handle_pkt.asid[0], handle_pkt.instr_id, CR3_addr, std::size(pscl_hits));
+    fmt::print("[{}] {} address: {:#x} v_address: {:#x} pt_page_offset: {} translation_level: {} instr_id: {} CR3_addr: {:#x} pscl size: {}\n", NAME, __func__, fwd_mshr.address, fwd_mshr.v_address,
+               walk_offset / PTE_BYTES, walk_init.level, handle_pkt.instr_id, CR3_addr, std::size(pscl_hits));
   }
 
   return step_translation(fwd_mshr);
@@ -93,9 +93,9 @@ auto PageTableWalker::handle_read(const request_type& handle_pkt, channel_type* 
 auto PageTableWalker::handle_fill(const mshr_type& fill_mshr) -> std::optional<mshr_type>
 {
   if ((champsim::debug_print) && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-    fmt::print("[{}] {} address: {:#x} v_address: {:#x} data: {:#x} pt_page_offset: {} translation_level: {} event: {} current: {} packet asid: {}\n", NAME, __func__,
+    fmt::print("[{}] {} address: {:#x} v_address: {:#x} data: {:#x} pt_page_offset: {} translation_level: {} event: {} current: {}\n", NAME, __func__,
                fill_mshr.address, fill_mshr.v_address, fill_mshr.data, (fill_mshr.data & champsim::bitmask(LOG2_PAGE_SIZE)) >> champsim::lg2(PTE_BYTES),
-               fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle, fill_mshr.asid[0]);
+               fill_mshr.translation_level, fill_mshr.event_cycle, current_cycle);
   }
 
   const auto pscl_idx = std::size(pscl) - fill_mshr.translation_level;
@@ -132,8 +132,8 @@ auto PageTableWalker::step_translation(const mshr_type& source) -> std::optional
 
   // WL 
   if ((champsim::debug_print) && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} current: {} packet asid: {} success: {}\n", NAME, __func__,
-               packet.instr_id, packet.address, packet.v_address, current_cycle, packet.asid[0], success);
+    fmt::print("[{}] {} instr_id: {} address: {:#x} v_address: {:#x} current: {} success: {}\n", NAME, __func__,
+               packet.instr_id, packet.address, packet.v_address, current_cycle, success);
   }
 
   if (success)
@@ -204,21 +204,12 @@ void PageTableWalker::finish_packet(const response_type& packet)
   auto finish_step = [this](auto& mshr_entry) {
     uint64_t penalty;
     std::tie(mshr_entry.data, penalty) = this->vmem->get_pte_pa(mshr_entry.cpu, mshr_entry.v_address, mshr_entry.translation_level);
-    // WL 
-    /*
-    if (mshr_entry.v_address > 0x1000000000000000) {
-      std::cout << "mshr_entry.v_address too large " << (unsigned long)mshr_entry.v_address << " > " << (unsigned long)0xf000000000000 << " log = " << champsim::lg2(mshr_entry.v_address) << std::endl; 
-      assert(false);
-    }
-    */
-    // WL
     //std::tie(mshr_entry.data, penalty) = this->vmem->get_pte_pa(mshr_entry.asid[0], mshr_entry.v_address, mshr_entry.translation_level);
-
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if ((champsim::debug_print) && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-      fmt::print("[{}] finish_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} packet asid: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
-                 mshr_entry.data, mshr_entry.translation_level, mshr_entry.asid[0]);
+      fmt::print("[{}] finish_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", NAME, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, mshr_entry.translation_level);
     }
   };
 
@@ -230,8 +221,8 @@ void PageTableWalker::finish_packet(const response_type& packet)
     mshr_entry.event_cycle = this->current_cycle + (this->warmup ? 0 : penalty + HIT_LATENCY);
 
     if ((champsim::debug_print) && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {} packet asid: {}\n", this->NAME, mshr_entry.address, mshr_entry.v_address,
-                 mshr_entry.data, mshr_entry.translation_level, mshr_entry.asid[0]);
+      fmt::print("[{}] complete_packet address: {:#x} v_address: {:#x} data: {:#x} translation_level: {}\n", this->NAME, mshr_entry.address, mshr_entry.v_address,
+                 mshr_entry.data, mshr_entry.translation_level);
     }
   };
 

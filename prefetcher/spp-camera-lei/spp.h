@@ -5,7 +5,6 @@
 #include "bootstraptable.h"
 #include "patterntable.h"
 #include "filter.h"
-#include "page_bitmap.h" // WL
 
 #include <cstdlib>
 #include <deque>
@@ -57,14 +56,8 @@ namespace spp {
 
     public:
 
-    std::map<uint64_t, std::deque<std::tuple<uint64_t, bool, int8_t>>> available_prefetches;    
-    std::deque<std::tuple<uint64_t, bool, int8_t>> context_switch_issue_queue;
-    constexpr static bool PB_ENABLED = false; // WL
-    SPP_PAGE_BITMAP page_bitmap; // WL
-    uint64_t curr_addr; // WL
-
     bool warmup = true;
-    
+
     void update_demand(uint64_t base_addr, uint32_t set);
     void issue(CACHE* cache);
     void step_lookahead();
@@ -72,7 +65,6 @@ namespace spp {
     void print_stats(std::ostream& ostr);
     
     // WL 
-    bool context_switch_prefetch_gathered = false;
     std::ofstream prefetcher_state_file;
 
     struct PF {
@@ -98,14 +90,7 @@ namespace spp {
 
     uint64_t cache_cycle;
 
-    void clear_states();
-    void context_switch_gather_prefetches(CACHE* cache);
-    std::optional<uint64_t> context_switch_aux(uint32_t &sig, int32_t delta, float &confidence, uint64_t page_num, uint32_t &last_offset);
-    void record_spp_states();
     float CUTOFF_THRESHOLD = 0.1;
-    uint64_t gathered_pf_this_round;
-    uint64_t issued_pf_this_round;
-    uint64_t hit_pf_this_round;
     // WL 
   };
 } // namespace spp

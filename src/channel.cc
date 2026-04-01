@@ -126,8 +126,8 @@ bool champsim::channel::do_add_queue(R& queue, std::size_t queue_size, const typ
   }
 
   if (champsim::debug_print && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
-    fmt::print("[channel] {} instr_id: {} address: {:#x} v_address: {:#x} type: {} packet asid: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
-        access_type_names.at(champsim::to_underlying(packet.type)), packet.asid[0]);
+    fmt::print("[channel] {} instr_id: {} address: {:#x} v_address: {:#x} type: {}\n", __func__, packet.instr_id, packet.address, packet.v_address,
+        access_type_names.at(champsim::to_underlying(packet.type)));
   }
 
   // Insert the packet ahead of the translation misses

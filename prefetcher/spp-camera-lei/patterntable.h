@@ -7,9 +7,6 @@
 #include <iostream>
 #include <iomanip>
 
-// WL 
-#define DEBUG_PRINT_PATTERN_TABLE 0
-
 namespace spp
 {
   class PATTERN_TABLE
@@ -45,12 +42,5 @@ namespace spp
 
       void update_pattern(uint32_t last_sig, int curr_delta);
       std::optional<std::pair<int, int>> lookahead_step(uint32_t sig, int confidence, uint32_t depth);
-
-      // WL 
-      void clear();
-      std::optional<int> query_pt(uint32_t sig, unsigned int &_c_delta, unsigned int &_c_sig);
-      int get_prefetch_range(uint32_t sig);
-      std::string record_Pattern_Table();
-      // WL
   };
 }

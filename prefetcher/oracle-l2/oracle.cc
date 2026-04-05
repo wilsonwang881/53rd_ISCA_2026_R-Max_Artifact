@@ -69,6 +69,13 @@ void spp_l3::SPP_ORACLE::file_read() {
 
   uint64_t total_mem_acc = 0;
 
+  if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) 
+    std::cout << "Belady's cache replacement policy active." << std::endl;
+  else if (REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE) 
+    std::cout << "Reuse distance based cache replacement policy active." << std::endl;
+  else 
+    std::cout << "LRU cache replacement policy active." << std::endl;
+
   std::fstream rec_file_t(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
 
   if (!rec_file_t.is_open()) {
@@ -135,8 +142,6 @@ void spp_l3::SPP_ORACLE::file_read() {
     total_mem_acc += readin.size();
 
     if (BELADY_CACHE_REPLACEMENT_POLICY_ACTIVE) {
-      std::cout << "Belady's cache replacement policy active." << std::endl;
-
       for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
         // Separate accesses into different sets.
         std::deque<acc_timestamp> set_processing;
@@ -229,8 +234,6 @@ void spp_l3::SPP_ORACLE::file_read() {
       }
     }
     else if (REUSE_DISTANCE_REPLACEMENT_POLICY_ACTIVE) {
-      std::cout << "Reuse distance based cache replacement policy active." << std::endl;
-
       for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
         // Separate accesses into different sets.
         std::deque<acc_timestamp> set_processing;
@@ -396,8 +399,6 @@ void spp_l3::SPP_ORACLE::file_read() {
       }
     }
     else {
-      std::cout << "LRU cache replacement policy active." << std::endl;
-
       for (int set_number = set_number_begin; set_number < set_number_end; set_number++) {
         // Separate accesses into different sets.
         std::deque<acc_timestamp> set_processing;

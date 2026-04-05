@@ -325,8 +325,16 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
   }
   */
 
-  //const auto hit = !LLC_name.compare(NAME) ? true : (way != set_end); // WL
+#ifdef ALWAYS_HIT_L1D
+  const auto hit = !L1D_name.compare(NAME) ? true : (way != set_end); // WL
+#elif defined(ALWAYS_HIT_L2C)
+  const auto hit = !L2C_name.compare(NAME) ? true : (way != set_end); // WL
+#elif defined(ALWAYS_HIT_LLC)
+  const auto hit = !LLC_name.compare(NAME) ? true : (way != set_end); // WL
+#else
   const auto hit = (way != set_end); // WL
+#endif
+
   const auto useful_prefetch = (hit && way->prefetch && !handle_pkt.prefetch_from_this);
 
   if (champsim::debug_print && champsim::operable::cpu0_num_retired >= champsim::operable::number_of_instructions_to_skip_before_log) {
@@ -348,10 +356,22 @@ bool CACHE::try_hit(const tag_lookup_type& handle_pkt)
     // update replacement policy
     const auto way_idx = static_cast<std::size_t>(std::distance(set_begin, way)); // cast protected by earlier assertion
 
-    //if (LLC_name.compare(NAME)) { // WL
+#ifdef ALWAYS_HIT_L1D
+  if (L1D_name.compare(NAME))  // WL
+    impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0,
+                                    champsim::to_underlying(handle_pkt.type), true);
+#elif defined(ALWAYS_HIT_L2C)
+  if (L2C_name.compare(NAME))  // WL
+    impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0,
+                                    champsim::to_underlying(handle_pkt.type), true);
+#elif defined(ALWAYS_HIT_LLC)
+  if (LLC_name.compare(NAME))  // WL
+    impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0,
+                                    champsim::to_underlying(handle_pkt.type), true);
+#else
       impl_update_replacement_state(handle_pkt.cpu, get_set_index(handle_pkt.address), way_idx, way->address, handle_pkt.ip, 0,
                                     champsim::to_underlying(handle_pkt.type), true);
-    //} // WL
+#endif
 
     response_type response{handle_pkt.address, handle_pkt.v_address, way->data, metadata_thru, handle_pkt.instr_depend_on_me};
     for (auto ret : handle_pkt.to_return)

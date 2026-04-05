@@ -55,13 +55,19 @@ void spp_l3::SPP_ORACLE::file_read() {
   omp_lock_t lock;
   omp_init_lock(&lock);
 
-  std::fstream rec_file_t;
-  rec_file_t.open(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
+  std::fstream rec_file_t(L2C_PHY_ACC_FILE_NAME, std::ifstream::in);
+
+  if (!rec_file_t.is_open()) {
+    // create file
+    std::fstream create(L2C_PHY_ACC_FILE_NAME, std::ios::out | std::ios::trunc);
+    create.close();
+  }
+
   uint64_t readin_cycle_demanded, readin_addr, readin_miss_or_hit;
   uint64_t type;
   std::deque<acc_timestamp> readin_t;
 
-  while(!rec_file_t.eof()) {
+  while(rec_file_t >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type) {
     rec_file_t >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type;
     tmpp.cycle_demanded = readin_cycle_demanded;
     tmpp.addr = (readin_addr >> 6) << 6;

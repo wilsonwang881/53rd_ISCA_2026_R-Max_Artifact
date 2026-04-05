@@ -30,15 +30,24 @@ namespace spp_l3 {
     constexpr static int MEMORY_USAGE_REDUCTION_FACTOR = 32;
 
     std::string L2C_PHY_ACC_FILE_NAME = "cache_phy_acc.txt";
-
     std::fstream rec_file;
     std::string PF_ACC_FILE_NAME = "pf_acc.txt";
     std::fstream pf_acc_file;
 
     public:
     constexpr static bool ROLLBACK_ENABLED = true;
+
+#ifdef PARTIAL_R_MAX
+    constexpr static bool PF_ACC_COMPARE_ENABLED = true;
+#else
     constexpr static bool PF_ACC_COMPARE_ENABLED = false;
+#endif 
+
+#ifdef PREFETCH_IN_VIRTUAL_SPACE
+    constexpr static bool TRANSLATE_PF_ADDR = true;
+#else 
     constexpr static bool TRANSLATE_PF_ADDR = false;
+#endif
 
 #ifdef R_MAX_IN_L1D
     const static int SET_NUM = 64;

@@ -1,5 +1,6 @@
 {
     "executable_name": "champsim",
+    "CXXFLAGS": ["-DR_MAX_IN_L2C -DUSE_PAGE_TRANSLATION"],
     "block_size": 64,
     "page_size": 4096,
     "heartbeat_frequency": 1000000,

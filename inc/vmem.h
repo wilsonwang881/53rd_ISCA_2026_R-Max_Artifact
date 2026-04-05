@@ -49,7 +49,12 @@ private:
   void ppage_pop();
 
   // WL
+#ifdef RECORD_PAGE_TRANSLATION
   bool RECORD_IN_USE = true;
+#elif defined(USE_PAGE_TRANSLATION)
+  bool RECORD_IN_USE = false;
+#endif 
+
   bool RECORD_OR_READ = !RECORD_IN_USE;
   std::string va_to_pa_file_name = "va_to_pa.txt";
   std::string page_table_file_name = "page_table.txt";

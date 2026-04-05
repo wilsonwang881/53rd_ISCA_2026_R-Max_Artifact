@@ -41,7 +41,17 @@ public:
   const std::string DTLB_name = "cpu0_DTLB";
   const std::string ITLB_name = "cpu0_ITLB";
   const std::string STLB_name = "cpu0_STLB";
+
+#ifdef R_MAX_IN_L1D
+  const std::string ORACLE_at = L1D_name;
+#elif defined(R_MAX_IN_L2C)
   const std::string ORACLE_at = L2C_name;
+#elif defined(R_MAX_IN_LLC)
+  const std::string ORACLE_at = LLC_name;
+#else 
+  const std::string ORACLE_at = L2C_name;
+#endif
+
   const std::string ORACLE_at_2nd = L2C_name;
 
   static uint64_t number_of_instructions_to_skip_before_log;

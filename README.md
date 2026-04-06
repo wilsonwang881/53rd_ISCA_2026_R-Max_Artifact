@@ -84,9 +84,59 @@ There are some other useful metrics printed out at the end of simulation. <br>
 
 Good luck and be a champion! <br>
 
+# How to Compile Binaries for Simulations in Batch
+
+**sim_configs** has all the configuration files.
+
+**sim_compile** has all the scripts to use the configurations in **sim_config** for compiling. Run `./sim_compile/compile_all.sh` in the root level of this ChampSim directory to compile all configurations. Or one can choose to compile any individual configuration by invoking the corresponding script.
+
+# How to Run Binaries for Simulations in Batch
+
+**sim_run** has corresponding the scripts.
+
+Create a directory and change directory into it.
+
+Run `<path to ChampSim directory>/sim_run/generate_commands.sh <path to the ChampSim trace folder> <path to the compiled binaries>` to setup the directory structure for simulation.
+
+If asked whether the simulated workloads are CVP workloads, answer yes. Use the file **./sim_run/cvp_public_trace_length.txt** for the trace length information for CVP traces.
+
+The command creates two files: `phase_1_jobs.txt` and `phase_2_jobs.txt`.
+
+Each line from those two job files corresponds to a single simulation.
+
+Use GNU Parallel or adapt to Slurm on `phase_1_jobs.txt`. Wait for the jobs to finish.
+
+Run `<path to ChampSim directory>/sim_run/copy_translations.sh` in the root level of the created simulation folder.
+
+Use GNU Parallel or adapt to Slurm on `phase_2_jobs.txt`. Wait for the jobs to finish.
+
+For phase_2 jobs, make sure to allocate enough memory for the jobs. Allocate at least 3 times the size of the memory trace file.
+
+Different traces or placing R-Max at different cache levels require different amount of RAM.
+
+# How to Process Results
+
+Each sub-directory in the created simulation folder corresponds to a single setting.
+
+The sub-directory **baseline** in the created simulation folder has the baseline results that have no prefetching and use LRU for cache replacement.
+
+**./sim_analyze/weights.csv** has the weights for simpoints. Only GAP, XSBench and SPEC have weights. CVP-1 traces have no weights.
+
+Run **<path to ChampSim director>/sim_analyze/process_log.py --baseline <path to the baseline folder> --configs <paths to all the folders containing different configurations> at the root level of the created simulation folder to process the data.
+
+The above command will ask if processing CVP traces. If not processing CVP traces, input the path to the weights file, which can be found in **./sim_analyze/weights.csv** in this repository.
+
+A final **final_results.csv** file will be created to display the results. The final csv file contains information on speedups, prefetch coverage, prefetch accuracy and DRAM utilization.
+
+Note that for some settings, i.e. always hit l1d, may not display any values for the metric like prefetch accuracy, because it does not issue any prefetches.
+
+Please create different simulation folders for different benchmark suites.
+
 # Steps to Change Prefetchers for Simulations
 
-Found in sim_configs directory. We evaluated AMPM, Berti, SPP, Berti+SPP+PPF, IP Stride, IPCP, also R-Max at different cache levels.
+Below are the changes covered by the compiling scripts to run different simulations.
+
+Found in **./sim_configs** directory. We evaluated AMPM, Berti, SPP, Berti+SPP+PPF, IP Stride, IPCP, SPP-Max, Berti-Max, also R-Max at different cache levels.
 
 The following changes are needed:
 
@@ -103,7 +153,7 @@ After the first iteration of R-Max, change the line to `bool RECORD_IN_USE = tru
 ```
     ...
     // The filename of the memory access trace that will be used to produce prefetch/replacement sequences in the next iteration. 
-    std::string L2C_PHY_ACC_FILE_NAME = "L2C_phy_acc.txt"; 
+    std::string L2C_PHY_ACC_FILE_NAME = "cache_phy_acc.txt"; 
     ...
     // The filename of the file that contains the prefetches issued by another prefetcher, i.e. SPP. 
     // When using the prefetches issued by another prefetcher, the simulations have to use the same virtual to physical page translations.
@@ -121,7 +171,6 @@ After the first iteration of R-Max, change the line to `bool RECORD_IN_USE = tru
     const static int WAY_NUM = 10;
     ...
 ```
-
 
 4. In **prefetcher/oracle-l2/spp.h**, please make the following change if needed:
 

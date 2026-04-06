@@ -6,7 +6,7 @@ SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR/.." || exit
 
 # Configure ChampSim using the configuration file.
-./config.sh ./sim_configs/berti_configs.json
+./config.sh ./sim_configs/berti_config.json
 
 # Compile.
 make -j 8

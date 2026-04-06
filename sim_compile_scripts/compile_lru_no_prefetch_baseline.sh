@@ -1,17 +1,17 @@
 #!/bin/bash
-echo "Building ChampSim with SPP running in L2C with MSHR sizes x100"
+echo "Building ChampSim with LRU, No Prefetch Baseline"
 
 # Return to the project root.
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 cd "$SCRIPT_DIR/.." || exit
 
 # Configure ChampSim using the configuration file.
-./config.sh ./sim_configs/spp_mshr_x100_config.json
+./config.sh ./sim_configs/lru_no_prefetch_baseline_config.json
 
 # Compile.
 make -j 8
 
 # Rename the compiled binary
-mv bin/champsim bin/spp_l2c_mshr_x100
+mv bin/champsim bin/baseline
 
-echo "SPP in L2C with MSHR sizes x100 build complete!"
+echo "LRU, No Prefetch Baseline build complete!"

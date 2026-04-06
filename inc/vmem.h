@@ -50,9 +50,9 @@ private:
 
   // WL
 #ifdef RECORD_PAGE_TRANSLATION
-  bool RECORD_IN_USE = true;
-#elif defined(USE_PAGE_TRANSLATION)
   bool RECORD_IN_USE = false;
+#elif defined(USE_PAGE_TRANSLATION)
+  bool RECORD_IN_USE = true;
 #endif 
 
   bool RECORD_OR_READ = !RECORD_IN_USE;

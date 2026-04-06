@@ -116,6 +116,8 @@ Different traces or placing R-Max at different cache levels require different am
 
 # How to Process Results
 
+Please create different simulation folders for different benchmark suites.
+
 Each sub-directory in the created simulation folder corresponds to a single setting.
 
 The sub-directory **baseline** in the created simulation folder has the baseline results that have no prefetching and use LRU for cache replacement.
@@ -129,8 +131,6 @@ The above command will ask if processing CVP traces. If not processing CVP trace
 A final **final_results.csv** file will be created to display the results. The final csv file contains information on speedups, prefetch coverage, prefetch accuracy and DRAM utilization.
 
 Note that for some settings, i.e. always hit l1d, may not display any values for the metric like prefetch accuracy, because it does not issue any prefetches.
-
-Please create different simulation folders for different benchmark suites.
 
 # Steps to Change Prefetchers for Simulations
 

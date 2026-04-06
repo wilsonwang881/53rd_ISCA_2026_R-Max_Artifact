@@ -125,11 +125,9 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
             ])
         writer.writerow(headers)
 
-        # Structure to hold group/summary metrics
         group_metrics = {}
         all_group_key = "CVP_ALL" if is_cvp else "SP_ALL"
 
-        # Organize by workload
         workloads = {}
         for clean_name, data in results_db.items():
             if "Baseline" not in data:
@@ -146,6 +144,8 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
             if wl not in workloads:
                 workloads[wl] = []
             workloads[wl].append(clean_name)
+
+        aggregate_rows = [] # List to store aggregate rows to print later
 
         # Process each workload
         for wl, traces in sorted(workloads.items()):
@@ -180,7 +180,6 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
 
                         row.extend([f"{ipc_impr:.4f}", f"{dram_change:.4f}", f"{acc_pct:.4f}", f"{cov_pct:.4f}"])
 
-                        # If CVP, traces ARE the workload, so log them directly to the group summary metrics
                         if is_cvp:
                             group_metrics[group][config]['ipc_ratios'].append(ipc_ratio)
                             group_metrics[group][config]['dram_ratios'].append(dram_ratio)
@@ -196,11 +195,10 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                 
                 writer.writerow(row)
 
-            # 2. Print Workload Aggregate (SimPoint ONLY)
+            # Compute Workload Aggregate (SimPoint ONLY) and save it for later
             if not is_cvp:
                 wl_row = [f"AGGREGATE_{wl}", "", ""] 
                 
-                # Baseline Aggregate
                 sum_base_w = sum(trace_info[t]['weight'] for t in traces)
                 if sum_base_w > 0:
                     wl_base_ipc = sum(results_db[t]["Baseline"]['ipc'] * trace_info[t]['weight'] for t in traces) / sum_base_w
@@ -208,20 +206,17 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                     wl_row[1] = f"{wl_base_ipc:.4f}"
                     wl_row[2] = f"{wl_base_dram:.0f}"
 
-                # Config Aggregates
                 for config in config_labels:
                     cl = config_cache_levels[config]
 
                     valid_t = [t for t in traces if config in results_db[t]]
                     failed_t = [t for t in traces if config not in results_db[t]]
 
-                    # Print warning for any missing log files to alert the user
                     if failed_t:
                         print(f"[WARNING] Traces {failed_t} failed or missing logs for '{config}'. Renormalizing weights for workload '{wl}'.")
 
                     sum_w = sum(trace_info[t]['weight'] for t in valid_t)
                     if sum_w > 0:
-                        # Q1: Compute weighted Base IPC and Config IPC for this specific config, then calculate improvement
                         w_base_ipc = sum(results_db[t]["Baseline"]['ipc'] * trace_info[t]['weight'] for t in valid_t) / sum_w
                         w_conf_ipc = sum(results_db[t][config]['ipc'] * trace_info[t]['weight'] for t in valid_t) / sum_w
                         w_ipc_impr = (w_conf_ipc / w_base_ipc - 1.0) * 100 if w_base_ipc > 0 else 0.0
@@ -233,7 +228,6 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                         for t in valid_t:
                             t_w = trace_info[t]['weight'] / sum_w
                             
-                            # Q1: Weight the percentages directly
                             b_dram = results_db[t]["Baseline"]['dram_util']
                             c_dram = results_db[t][config]['dram_util']
                             t_dram_pct = ((c_dram / b_dram) - 1.0) * 100 if b_dram > 0 else 0.0
@@ -249,7 +243,6 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
 
                         wl_row.extend([f"{w_ipc_impr:.4f}", f"{w_dram_pct:.4f}", f"{w_acc_pct:.4f}", f"{w_cov_pct:.4f}"])
 
-                        # Log the workload aggregates to the group summary metrics using native ratios
                         group_metrics[group][config]['ipc_ratios'].append(1.0 + w_ipc_impr / 100.0)
                         group_metrics[group][config]['dram_ratios'].append(1.0 + w_dram_pct / 100.0)
                         group_metrics[group][config]['acc_fracs'].append(w_acc_pct / 100.0)
@@ -262,13 +255,17 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                     else:
                         wl_row.extend(["N/A", "N/A", "N/A", "N/A"])
 
-                writer.writerow(wl_row)
-                writer.writerow([]) # Visual spacing to keep groups readable
+                aggregate_rows.append(wl_row)
+
+        # 2. Print Workload Aggregates Block
+        if aggregate_rows:
+            writer.writerow([]) # Visual spacing
+            for row in aggregate_rows:
+                writer.writerow(row)
 
         # 3. Print Group Geomean Summaries
-        writer.writerow([])
+        writer.writerow([]) # Visual spacing
         for g_name in list(group_metrics.keys()):
-            # Skip if group has no traces
             if not any(group_metrics[g_name][cfg]['ipc_ratios'] for cfg in config_labels):
                 continue
 
@@ -282,7 +279,6 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                 gm_acc_frac = geomean_epsilon(metrics['acc_fracs'], epsilon=1e-6)
                 gm_miss_ratio = geomean_epsilon(metrics['miss_ratios'], epsilon=1e-6)
 
-                # Convert geometric mean ratios back into +/- percentages
                 mean_ipc_impr = (gm_ipc_ratio - 1.0) * 100 if gm_ipc_ratio > 0 else 0.0
                 mean_dram_change = (gm_dram_ratio - 1.0) * 100 if gm_dram_ratio > 0 else 0.0
                 mean_acc_pct = gm_acc_frac * 100
@@ -314,7 +310,6 @@ def main():
         with open(weights_file, 'r') as f:
             reader = csv.DictReader(f)
             for row in reader:
-                # Strip absolute path and suffix to match trace logs
                 t_clean = Path(row['trace']).name.replace('.champsimtrace.xz', '')
                 trace_info[t_clean] = {
                     'workload': row['workload'],

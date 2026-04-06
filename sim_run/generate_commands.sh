@@ -32,6 +32,12 @@ if [ ! -d "$BINARIES_DIR" ]; then
 fi
 
 # ---------------------------------------------------------
+# Clean up old job files
+# ---------------------------------------------------------
+rm -f phase_1_jobs.txt phase_2_jobs.txt
+echo "Cleaned up old job files."
+
+# ---------------------------------------------------------
 # Interactive Prompt for CVP-1 Traces
 # ---------------------------------------------------------
 IS_CVP=false
@@ -115,7 +121,7 @@ for BINARY_PATH in "$BINARIES_DIR"/*; do
                         cp cache_phy_acc.txt cache_phy_acc_\$i.txt && \
                         cp oracle_pf_timing.txt oracle_pf_timing_\$i.txt; \
                     done"
-                    echo $ONE_LINER >> "$PHASE_2_RUN_FILE" 
+                    echo "$ONE_LINER" >> "$PHASE_2_RUN_FILE" 
                 else
                     echo "cd $TARGET_RESULT_DIR && $ABS_BIN --warmup-instructions $WARMUP_INST --simulation-instructions $SIM_INST $TRACE_PATH > $OUT" >> "$PHASE_1_RUN_FILE" 
                 fi

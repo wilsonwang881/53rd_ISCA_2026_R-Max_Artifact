@@ -68,7 +68,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,RFO,TRANSLATION,WRITE,PREFETCH",
-        "prefetcher": "oracle-replacement"
+        "prefetcher": "no"
     },
 
     "L2C": {
@@ -163,7 +163,7 @@
         "prefetch_as_load": false,
         "virtual_prefetch": false,
         "prefetch_activate": "LOAD,WRITE,TRANSLATION,RFO,PREFETCH",
-        "prefetcher": "no",
+        "prefetcher": "oracle-replacement",
         "replacement": "lru"
     },
 

@@ -49,7 +49,7 @@ namespace spp_l2 {
       uint64_t level;
     };
 
-    std::string PF_ADDR_FILE_NAME = "oracle_pf_timing.txt";
+    std::string PF_ADDR_FILE_NAME = "oracle_pf_timing_2nd.txt";
     std::fstream pf_acc_file;
     std::deque<struct PF> pf_acc;
     uint64_t PF_ACC_THRESHOLD_LENGTH = 100000;

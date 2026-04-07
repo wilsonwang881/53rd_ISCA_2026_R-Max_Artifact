@@ -1,16 +1,21 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the R-Max paper and the original ChampSim paper to support its continued development."
+title: "Artifact for: R-Max: A Method for Approximating the Benefit Of Ideal Prefetching and Replacement Policy"
 authors:
-  - family-names: Gober
-    given-names: Nathan
+  - family-names: Wang
+    given-names: Lei
+  - family-names: Lee
+    given-names: Chia-Hang
+  - family-names: Merrell
+    given-names: Maccoy
   - family-names: Chacon
     given-names: Gino
-  - family-names: Pugsley
-    given-names: Seth
-  - family-names: Kim
-    given-names: Jinchun
-cff-version: 1.2.0
-title: "ChampSim"
-message: "If you use this software, please cite this article to support its continued development."
-preferred-citation:
+  - family-names: Jiménez
+    given-names: Daniel A.
+  - family-names: Gratz
+    given-names: Paul V.
+
+references:
   authors:
     - family-names: Gober
       given-names: Nathan

@@ -1,0 +1,33 @@
+{
+  "title": "Artifact for: R-Max: A Method for Approximating the Benefit Of Ideal Prefetching and Replacement Policy",
+  "description": "Source code and evaluation scripts for the R-Max prefetcher/replacement policy.",
+  "creators": [
+    {
+      "name": "Wang, Lei",
+      "affiliation": "Texas A&M University"
+    },
+    {
+      "name": "Lee, Chia-Hang",
+      "affiliation": "Texas A&M University"
+    },
+    {
+      "name": "Merrell, Maccoy",
+      "affiliation": "Texas A&M University"
+    },
+    {
+      "name": "Chacon, Gino",
+      "affiliation": "AheadComputing Inc."
+    },
+        {
+      "name": "Jiménez, Daniel A.",
+      "affiliation": "Texas A&M University"
+    },
+    {
+      "name": "Gratz, Paul V.",
+      "affiliation": "Texas A&M University"
+    }
+  ],
+  "upload_type": "software",
+  "access_right": "open",
+  "license": "Apache 2.0"
+}

@@ -106,7 +106,7 @@ Each line from those two job files corresponds to a single simulation.
 
 Use GNU Parallel or adapt to Slurm on `phase_1_jobs.txt`. Wait for the jobs to finish.
 
-Run `<path to ChampSim directory>/sim_run/copy_translations.sh` in the root level of the created simulation folder.
+Run `<path to ChampSim directory>/sim_run/copy_translationws.sh` in the root level of the created simulation folder.
 
 Use GNU Parallel or adapt to Slurm on `phase_2_jobs.txt`. Wait for the jobs to finish.
 
@@ -122,9 +122,9 @@ Each sub-directory in the created simulation folder corresponds to a single sett
 
 The sub-directory **baseline** in the created simulation folder has the baseline results that have no prefetching and use LRU for cache replacement.
 
-**./sim_analyze/weights.csv** has the weights for simpoints. Only GAP, XSBench and SPEC have weights. CVP-1 traces have no weights.
+`./sim_analyze/weights.csv` has the weights for simpoints. Only GAP, XSBench and SPEC have weights. CVP-1 traces have no weights.
 
-Run **<path to ChampSim director>/sim_analyze/process_log.py --baseline <path to the baseline folder> --configs <paths to all the folders containing different configurations> at the root level of the created simulation folder to process the data.
+Run `<path to ChampSim director>/sim_analyze/process_log.py --baseline <path to the baseline folder> --configs <paths to all the folders containing different configurations>` at the root level of the created simulation folder to process the data.
 
 The above command will ask if processing CVP traces. If not processing CVP traces, input the path to the weights file, which can be found in **./sim_analyze/weights.csv** in this repository.
 

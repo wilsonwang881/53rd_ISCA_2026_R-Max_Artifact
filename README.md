@@ -132,6 +132,8 @@ A final **final_results.csv** file will be created to display the results. The f
 
 Note that for some settings, i.e. always hit l1d, may not display any values for the metric like prefetch accuracy, because it does not issue any prefetches.
 
+Run `<path to ChampSim director>/sim_analyze/process_conv.py <path to the R-Max, MIN, Berti-Max, SPP-Max folders>` to get the analysis for convergence analysis.
+
 # Steps to Change Prefetchers for Simulations
 
 Below are the changes covered by the compiling scripts to run different simulations.

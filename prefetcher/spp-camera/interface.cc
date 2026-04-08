@@ -18,7 +18,6 @@ void CACHE::prefetcher_initialize() {
   std::cout << std::endl;
 
   auto &pref = ::SPP[{this, cpu}];
-  pref.prefetcher_state_file.open("prefetcher_states.txt", std::ios::out);
 
   // Clear the file that records issued prefetches.
   pref.pf_acc_file.open(pref.PF_ADDR_FILE_NAME, std::ios::out | std::ios::trunc);

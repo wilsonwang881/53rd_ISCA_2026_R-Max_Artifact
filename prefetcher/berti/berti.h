@@ -249,8 +249,6 @@ namespace berti_space
 
       Berti(uint64_t p_size) : size(p_size) {
         // WL
-        prefetcher_state_file.open("prefetcher_states.txt", std::ios::out);
-
         // Clear the file that records issued prefetches.
         pf_acc_file.open(PF_ADDR_FILE_NAME, std::ios::out | std::ios::trunc);
         pf_acc_file.close();

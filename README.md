@@ -11,6 +11,18 @@ ChampSim is a trace-based simulator for a microarchitecture study. If you have q
 
 ChampSim is the result of academic research. To support its continued growth, please cite our work when you publish results that use ChampSim by clicking "Cite this Repository" in the sidebar.
 
+Please cite this modified version of ChampSim for your research:
+
+The citation for this R-Max paper accepted by the 53rd ISCA is coming soon!
+
+The following link is for the artifact:
+
+[![DOI](https://zenodo.org/badge/doi/10.5281/zenodo.19446756.svg)](https://doi.org/10.5281/zenodo.19446756)
+
+Please cite the original ChampSim paper as well:
+
+    Gober, N., Chacon, G., Wang, L., Gratz, P. V., Jimenez, D. A., Teran, E., Pugsley, S., & Kim, J. (2022). The Championship Simulator: Architectural Simulation for Education and Competition. https://doi.org/10.48550/arXiv.2210.14324
+
 # Download dependencies
 
 ChampSim uses [vcpkg](https://vcpkg.io) to manage its dependencies. In this repository, vcpkg is included as a submodule. You can download the dependencies with

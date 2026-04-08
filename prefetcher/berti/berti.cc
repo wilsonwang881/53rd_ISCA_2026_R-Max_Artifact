@@ -983,7 +983,16 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t addr, uint64_t ip,
            return (entry.address >> shamt) == match && entry.type == access_type::PREFETCH; 
          }) != MSHR.end();
 
-  struct Berti::ACC acc{addr, current_cycle, useful_prefetch ? 1 : search_MSHR, type};
+  uint64_t hit_miss_late = 0;
+
+  if (useful_prefetch) 
+    hit_miss_late = 1; 
+  else if (search_MSHR) 
+    hit_miss_late = 2; 
+  else 
+    hit_miss_late = 0;
+
+  struct Berti::ACC acc{addr, current_cycle, hit_miss_late, type};
   berti->cache_acc.push_back(acc);
 
   if (berti->cache_acc.size() > berti->PF_ACC_THRESHOLD_LENGTH) {

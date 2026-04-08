@@ -208,7 +208,16 @@ uint32_t CACHE::prefetcher_cache_operate(uint64_t base_addr, uint64_t ip, uint8_
            return (entry.address >> shamt) == match && entry.type == access_type::PREFETCH; 
          }) != MSHR.end();
 
-  pref.oracle.update_demand(this->current_cycle, base_addr, useful_prefetch ? 1 : search_mshr, type);
+  uint8_t hit_miss_late = 0;
+
+  if (useful_prefetch) 
+    hit_miss_late = 1; 
+  else if (search_mshr) 
+    hit_miss_late = 2; 
+  else 
+    hit_miss_late = 0;
+
+  pref.oracle.update_demand(this->current_cycle, base_addr, hit_miss_late, type);
 
   uint64_t way = this->get_way(base_addr, set);
 

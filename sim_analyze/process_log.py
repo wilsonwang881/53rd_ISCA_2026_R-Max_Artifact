@@ -64,6 +64,13 @@ def parse_log_file(file_path):
 def process_trace_folder(trace_dir):
     trace_path = Path(trace_dir)
     log_files = list(trace_path.glob("log*.txt"))
+
+    # log.txt in R-Max, Berti-Max, SPP-Max folders are the log files from running SPP or Berti.
+    # log_1.txt is the first time R-Max, Berti-Max, or SPP-Max runs, without issuing any prefetches.
+    # So exclude both if processing R-Max, Berti-Max, or SPP-Max log files.
+    if "max" in str(trace_path):
+        log_files = [f for f in trace_path.glob("log_*.txt") if f.name != "log_1.txt"]
+
     if not log_files: return None
 
     best_result = None
@@ -152,8 +159,6 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
             group = trace_info[traces[0]]['group']
             if group not in group_metrics:
                 group_metrics[group] = {cfg: {'ipc_ratios': [], 'dram_ratios': [], 'acc_fracs': [], 'miss_ratios': []} for cfg in config_labels}
-            if all_group_key not in group_metrics:
-                group_metrics[all_group_key] = {cfg: {'ipc_ratios': [], 'dram_ratios': [], 'acc_fracs': [], 'miss_ratios': []} for cfg in config_labels}
 
             # 1. Print Individual Trace Rows
             for t in sorted(traces):
@@ -185,11 +190,6 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                             group_metrics[group][config]['dram_ratios'].append(dram_ratio)
                             group_metrics[group][config]['acc_fracs'].append(acc_pct / 100.0)
                             group_metrics[group][config]['miss_ratios'].append(miss_ratio)
-
-                            group_metrics[all_group_key][config]['ipc_ratios'].append(ipc_ratio)
-                            group_metrics[all_group_key][config]['dram_ratios'].append(dram_ratio)
-                            group_metrics[all_group_key][config]['acc_fracs'].append(acc_pct / 100.0)
-                            group_metrics[all_group_key][config]['miss_ratios'].append(miss_ratio)
                     else:
                         row.extend(["N/A", "N/A", "N/A", "N/A"])
                 
@@ -247,11 +247,6 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                         group_metrics[group][config]['dram_ratios'].append(1.0 + w_dram_pct / 100.0)
                         group_metrics[group][config]['acc_fracs'].append(w_acc_pct / 100.0)
                         group_metrics[group][config]['miss_ratios'].append(1.0 - w_cov_pct / 100.0)
-
-                        group_metrics[all_group_key][config]['ipc_ratios'].append(1.0 + w_ipc_impr / 100.0)
-                        group_metrics[all_group_key][config]['dram_ratios'].append(1.0 + w_dram_pct / 100.0)
-                        group_metrics[all_group_key][config]['acc_fracs'].append(w_acc_pct / 100.0)
-                        group_metrics[all_group_key][config]['miss_ratios'].append(1.0 - w_cov_pct / 100.0)
                     else:
                         wl_row.extend(["N/A", "N/A", "N/A", "N/A"])
 
@@ -265,6 +260,10 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
 
         # 3. Print Group Geomean Summaries
         writer.writerow([]) # Visual spacing
+        
+        # Collect the group geomeans to later calculate the geomean of geomeans
+        final_geomeans_data = {cfg: {'ipc_ratios': [], 'dram_ratios': [], 'acc_fracs': [], 'miss_ratios': []} for cfg in config_labels}
+
         for g_name in list(group_metrics.keys()):
             if not any(group_metrics[g_name][cfg]['ipc_ratios'] for cfg in config_labels):
                 continue
@@ -279,6 +278,12 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                 gm_acc_frac = geomean_epsilon(metrics['acc_fracs'], epsilon=1e-6)
                 gm_miss_ratio = geomean_epsilon(metrics['miss_ratios'], epsilon=1e-6)
 
+                # Store these group-level geomeans for the final ALL calculation
+                final_geomeans_data[config]['ipc_ratios'].append(gm_ipc_ratio)
+                final_geomeans_data[config]['dram_ratios'].append(gm_dram_ratio)
+                final_geomeans_data[config]['acc_fracs'].append(gm_acc_frac)
+                final_geomeans_data[config]['miss_ratios'].append(gm_miss_ratio)
+
                 mean_ipc_impr = (gm_ipc_ratio - 1.0) * 100 if gm_ipc_ratio > 0 else 0.0
                 mean_dram_change = (gm_dram_ratio - 1.0) * 100 if gm_dram_ratio > 0 else 0.0
                 mean_acc_pct = gm_acc_frac * 100
@@ -287,6 +292,26 @@ def write_csv(results_db, config_labels, config_cache_levels, is_cvp, trace_info
                 summary_row.extend([f"{mean_ipc_impr:.4f}", f"{mean_dram_change:.4f}", f"{mean_acc_pct:.4f}", f"{mean_cov_pct:.4f}"])
 
             writer.writerow(summary_row)
+            
+        # 4. Print Final Geomean of Geomeans
+        final_summary_row = [f"GEOMEAN_{all_group_key.upper()}", "", ""]
+        for config in config_labels:
+            metrics = final_geomeans_data[config]
+            
+            # Compute the geomean of the group geomeans
+            gm_ipc_ratio = geomean(metrics['ipc_ratios'])
+            gm_dram_ratio = geomean(metrics['dram_ratios'])
+            gm_acc_frac = geomean_epsilon(metrics['acc_fracs'], epsilon=1e-6)
+            gm_miss_ratio = geomean_epsilon(metrics['miss_ratios'], epsilon=1e-6)
+
+            mean_ipc_impr = (gm_ipc_ratio - 1.0) * 100 if gm_ipc_ratio > 0 else 0.0
+            mean_dram_change = (gm_dram_ratio - 1.0) * 100 if gm_dram_ratio > 0 else 0.0
+            mean_acc_pct = gm_acc_frac * 100
+            mean_cov_pct = (1.0 - gm_miss_ratio) * 100
+
+            final_summary_row.extend([f"{mean_ipc_impr:.4f}", f"{mean_dram_change:.4f}", f"{mean_acc_pct:.4f}", f"{mean_cov_pct:.4f}"])
+            
+        writer.writerow(final_summary_row)
 
     print(f"\n[✔] Successfully wrote results and summaries to {output_filename}")
 

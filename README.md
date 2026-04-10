@@ -136,7 +136,7 @@ The sub-directory **baseline** in the created simulation folder has the baseline
 
 `./sim_analyze/weights.csv` has the weights for simpoints. Only GAP, XSBench and SPEC have weights. CVP-1 traces have no weights.
 
-Run `<path to ChampSim director>/sim_analyze/process_log.py --baseline <path to the baseline folder> --configs <paths to all the folders containing different configurations>` at the root level of the created simulation folder to process the data.
+Run `python3 <path to ChampSim director>/sim_analyze/process_log.py --baseline <path to the baseline folder> --configs <paths to all the folders containing different configurations>` at the root level of the created simulation folder to process the data.
 
 The above command will ask if processing CVP traces. If not processing CVP traces, input the path to the weights file, which can be found in **./sim_analyze/weights.csv** in this repository.
 
@@ -144,7 +144,7 @@ A final **final_results.csv** file will be created to display the results. The f
 
 Note that for some settings, i.e. always hit l1d, may not display any values for the metric like prefetch accuracy, because it does not issue any prefetches.
 
-Run `<path to ChampSim director>/sim_analyze/process_conv.py <path to the R-Max, MIN, Berti-Max, SPP-Max folders>` to get the analysis for convergence analysis.
+Run `python3 <path to ChampSim director>/sim_analyze/process_conv.py <path to the R-Max, MIN, Berti-Max, SPP-Max folders>` to get the analysis for convergence analysis.
 
 # Steps to Change Prefetchers for Simulations
 

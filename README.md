@@ -146,6 +146,10 @@ Note that for some settings, i.e. always hit l1d, may not display any values for
 
 Run `python3 <path to ChampSim director>/sim_analyze/process_conv.py <path to the R-Max, MIN, Berti-Max, SPP-Max folders>` to get the analysis for convergence analysis.
 
+Run `python3 <path to ChampSim director>/sim_analyze/process_timeliness.py <path to the result folder> --mode <repeat/non-repeat>` to get the prefetch timeliness data. For R-Max, SPP-Max and Berti-Max. use `--mode repeat`. Otherwise use `--mode non-repeat`.
+
+After getting the timeliness data, use `python3 <path to ChampSim director>/sim_analyze/arith_mean_plot.py <paths to timeliness csv files>` to aggregrate the timeliness results.
+
 # Steps to Change Prefetchers for Simulations
 
 Below are the changes covered by the compiling scripts to run different simulations.

@@ -110,7 +110,7 @@ Create a directory and change directory into it.
 
 Run `<path to ChampSim directory>/sim_run/generate_commands.sh <path to the ChampSim trace folder> <path to the compiled binaries>` to setup the directory structure for simulation.
 
-If asked whether the simulated workloads are CVP workloads, answer yes. Use the file **./sim_run/cvp_public_trace_length.txt** for the trace length information for CVP traces.
+If asked whether the simulated workloads are CVP workloads, answer yes if running CVP traces. Use the file **./sim_run/cvp_public_trace_length.txt** for the trace length information for CVP traces.
 
 The command creates two files: `phase_1_jobs.txt` and `phase_2_jobs.txt`.
 

@@ -68,7 +68,6 @@ void spp_l3::SPP_ORACLE::file_read() {
   std::deque<acc_timestamp> readin_t;
 
   while(rec_file_t >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type) {
-    rec_file_t >> readin_cycle_demanded >> readin_addr >> readin_miss_or_hit >> type;
     tmpp.cycle_demanded = readin_cycle_demanded;
     tmpp.addr = (readin_addr >> 6) << 6;
     tmpp.set = calc_set(tmpp.addr);   

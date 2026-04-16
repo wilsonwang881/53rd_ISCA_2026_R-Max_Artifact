@@ -118,9 +118,13 @@ def match_saved_cycles(pf_queue, access_file, skip):
                 continue
 
             q = pf_queue.get(addr)
-            if q and q[0] <= cyc:
-                pf_issue_time = q.popleft()
-                diff = cyc - pf_issue_time
+            if q:
+                diff = 0
+
+                while q and q[0] <= cyc:
+                    pf_issue_time = q.popleft()
+                    diff = cyc - pf_issue_time
+                
                 saved_array.append(diff)
 
     return saved_array
